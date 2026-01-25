@@ -25,7 +25,7 @@ interface PostProps {
 
 export default function PostCard({ post }: { post: PostProps }) {
   return (
-    <Card className="border-0 rounded-none md:rounded-lg md:border bg-background shadow-none md:shadow-sm overflow-hidden">
+    <Card className="border-0 rounded-none md:rounded-lg bg-background shadow-none overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between p-3">
         <div className="flex items-center gap-3">
@@ -58,7 +58,7 @@ export default function PostCard({ post }: { post: PostProps }) {
       </div>
 
       {/* Action Buttons */}
-      <div className="p-3 pb-1">
+      <div className="p-3 pt-0 pb-1">
         <div className="flex justify-between mb-2">
           <div className="flex gap-4">
             <Button
@@ -66,7 +66,7 @@ export default function PostCard({ post }: { post: PostProps }) {
               size="icon"
               className="h-9 w-9 p-0 hover:text-red-500 hover:bg-transparent"
             >
-              <Heart className="h-7 w-7" />
+              <Heart className="h-8 w-8" />
             </Button>
             <Link href={`/post/${post.id}`}>
               <Button
@@ -74,7 +74,7 @@ export default function PostCard({ post }: { post: PostProps }) {
                 size="icon"
                 className="h-9 w-9 p-0 hover:bg-transparent scale-x-[-1]"
               >
-                <MessageCircle className="h-7 w-7" />
+                <MessageCircle className="h-8 w-8" />
               </Button>
             </Link>
             <Button
@@ -82,7 +82,7 @@ export default function PostCard({ post }: { post: PostProps }) {
               size="icon"
               className="h-9 w-9 p-0 hover:bg-transparent"
             >
-              <Send className="h-7 w-7" />
+              <Send className="h-8 w-8" />
             </Button>
           </div>
           <Button

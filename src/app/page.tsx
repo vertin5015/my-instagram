@@ -5,10 +5,10 @@ export default function Home() {
   return (
     // Ins 首页通常是一个较窄的中心区域
     <div className="flex justify-center">
-      <div className="w-full max-w-[470px] space-y-6">
+      <div className="w-full max-w-[500px] space-y-6">
         {/* 顶部 Story 区域 (预留) */}
-        <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide border rounded-lg p-4 bg-card">
-          {Array.from({ length: 8 }).map((_, i) => {
+        <div className="flex gap-4 pb-2 rounded-lg p-3 bg-card">
+          {Array.from({ length: 5 }).map((_, i) => {
             const username = `user_${i}`;
             return (
               <div
@@ -16,7 +16,7 @@ export default function Home() {
                 className="flex flex-col items-center space-y-1 shrink-0"
               >
                 {/* Story Ring */}
-                <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-yellow-400 to-purple-600 p-[2px]">
+                <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-yellow-400 to-purple-600 p-[2px]">
                   <Avatar className="w-full h-full border-2 border-background">
                     <AvatarImage
                       src={`https://i.pravatar.cc/150?u=${username}`}

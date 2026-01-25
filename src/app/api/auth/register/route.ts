@@ -18,18 +18,12 @@ export async function POST(request: NextRequest) {
     // 验证邮箱格式
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      return NextResponse.json(
-        { error: "邮箱格式不正确" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "邮箱格式不正确" }, { status: 400 });
     }
 
     // 验证密码长度
     if (password.length < 6) {
-      return NextResponse.json(
-        { error: "密码长度至少为6位" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "密码长度至少为6位" }, { status: 400 });
     }
 
     // 检查邮箱是否已存在
@@ -38,10 +32,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (existingUser) {
-      return NextResponse.json(
-        { error: "该邮箱已被注册" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "该邮箱已被注册" }, { status: 400 });
     }
 
     // 如果提供了用户名，检查用户名是否已存在
@@ -94,4 +85,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

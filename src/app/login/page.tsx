@@ -54,7 +54,7 @@ export default function LoginPage() {
 
       // 登录/注册成功，保存用户信息
       setUser(data.user);
-      
+
       // 跳转到首页
       router.push("/");
       router.refresh();
@@ -73,9 +73,7 @@ export default function LoginPage() {
             {isLogin ? "登录" : "注册"}
           </CardTitle>
           <CardDescription>
-            {isLogin
-              ? "使用您的邮箱和密码登录"
-              : "创建新账户以开始使用"}
+            {isLogin ? "使用您的邮箱和密码登录" : "创建新账户以开始使用"}
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
@@ -145,11 +143,7 @@ export default function LoginPage() {
             </div>
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={loading}
-            >
+            <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "处理中..." : isLogin ? "登录" : "注册"}
             </Button>
             <Separator />
@@ -174,4 +168,3 @@ export default function LoginPage() {
     </div>
   );
 }
-

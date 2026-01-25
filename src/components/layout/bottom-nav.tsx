@@ -8,13 +8,13 @@ export default function BottomNav() {
   const { isAuthenticated } = useAuthStore();
 
   const navItems = [
-    { icon: Home, label: "Home", href: "/" },
-    { icon: Search, label: "Search", href: "/search" },
-    { icon: PlusSquare, label: "Create", href: "/create" },
-    { icon: Heart, label: "Notifications", href: "/notifications" },
+    { icon: Home, label: "首页", href: "/" },
+    { icon: Search, label: "搜索", href: "/search" },
+    { icon: PlusSquare, label: "创建", href: "/create" },
+    { icon: Heart, label: "通知", href: "/notifications" },
     {
       icon: User,
-      label: "Profile",
+      label: "主页",
       href: isAuthenticated ? "/profile" : "/login",
     },
   ];
