@@ -1,13 +1,22 @@
+"use client";
+
 import Link from "next/link";
 import { Home, Search, PlusSquare, Heart, User } from "lucide-react";
+import { useAuthStore } from "@/store/auth-store";
 
 export default function BottomNav() {
+  const { isAuthenticated } = useAuthStore();
+
   const navItems = [
     { icon: Home, label: "Home", href: "/" },
     { icon: Search, label: "Search", href: "/search" },
     { icon: PlusSquare, label: "Create", href: "/create" },
     { icon: Heart, label: "Notifications", href: "/notifications" },
-    { icon: User, label: "Profile", href: "/profile" },
+    {
+      icon: User,
+      label: "Profile",
+      href: isAuthenticated ? "/profile" : "/login",
+    },
   ];
 
   return (
