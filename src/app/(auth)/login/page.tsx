@@ -20,7 +20,7 @@ export default function LoginPage() {
   const [error, setError] = useState("");
 
   const router = useRouter();
-  const { setUser } = useAuthStore();
+  const { fetchUser } = useAuthStore();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,6 +36,7 @@ export default function LoginPage() {
       const response = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include", // 确保发送和接收 cookies
         body: JSON.stringify(body),
       });
 
@@ -52,7 +53,8 @@ export default function LoginPage() {
         return;
       }
 
-      setUser(data.user);
+      // 登录/注册成功后，从服务器获取用户信息（从 cookie 中验证）
+      await fetchUser();
       router.push("/");
       router.refresh();
     } catch (err) {

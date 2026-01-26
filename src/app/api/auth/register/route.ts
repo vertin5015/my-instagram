@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import bcrypt from "bcryptjs";
+import { createAuthSession } from "@/lib/auth";
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
     const { email, password, username, name } = body;
 
-    // 1. 强制所有字段必填
     if (!email || !password || !username || !name) {
       return NextResponse.json(
         { error: "所有字段都是必填项" },
@@ -15,7 +15,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // 2. 检查唯一性
+    // 1. 检查唯一性
     const existingUser = await prisma.user.findFirst({
       where: {
         OR: [{ email: email }, { username: username }],
@@ -34,10 +34,10 @@ export async function POST(req: Request) {
       }
     }
 
-    // 3. 密码加密
+    // 2. 密码加密
     const hashedPassword = await bcrypt.hash(password, 12);
 
-    // 4. 创建用户
+    // 3. 创建用户
     const user = await prisma.user.create({
       data: {
         email,
@@ -47,9 +47,16 @@ export async function POST(req: Request) {
       },
     });
 
-    // 排除密码返回
+    // 4. 直接设置 Session Cookie
+    // ✅ 使用 await 调用
+    if (user.email) {
+      await createAuthSession(user.id, user.email);
+    }
+
+    // 5. 返回用户
     const { hashedPassword: _, ...userWithoutPassword } = user;
 
+    // 不需要手动 set-cookie header，createAuthSession 内部已经处理了
     return NextResponse.json({ user: userWithoutPassword });
   } catch (error) {
     console.error("[REGISTER_ERROR]", error);

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import bcrypt from "bcryptjs";
+import { createAuthSession } from "@/lib/auth"; // 注意这里导入的是 createAuthSession
 
 export async function POST(req: Request) {
   try {
@@ -16,8 +17,6 @@ export async function POST(req: Request) {
       where: { email },
     });
 
-    // 为了安全，不要明确提示是“用户不存在”还是“密码错误”，统称“凭证错误”
-    // 但为了调试方便，你可以先分开写，上线前合并
     if (!user || !user.hashedPassword) {
       return NextResponse.json(
         { error: "账号不存在或密码错误" },
@@ -35,9 +34,14 @@ export async function POST(req: Request) {
       );
     }
 
-    // 3. 返回用户信息 (不包含密码)
-    // 注意：实际生产中这里应该设置 HttpOnly Cookie (JWT)，
-    // 但鉴于你目前使用 Zustand store 存储简单的登录态，我们先返回 User 对象
+    // 3. 生成 Token 并设置 Cookie
+    // ✅ 这里直接 await 调用，不需要再处理 headers 了
+    // Prisma 的 email 可能是 null，但这里必须确保非空
+    if (user.email) {
+      await createAuthSession(user.id, user.email);
+    }
+
+    // 4. 返回用户信息
     const { hashedPassword, ...userWithoutPassword } = user;
 
     return NextResponse.json({
