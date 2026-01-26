@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import FeedContainer from "@/components/feed/feed-container";
 import { useAuthStore } from "@/store/auth-store";
@@ -57,8 +58,12 @@ export default function Home() {
       {/* 右侧推荐栏 (仅在大屏显示) - 预留 */}
       <div className="hidden xl:block w-[320px] pl-16">
         <div className="fixed w-[320px]">
+          {/* 当前用户信息卡片 */}
           <div className="flex items-center justify-between py-2 mb-5">
-            <div className="flex items-center gap-3">
+            <Link
+              href={user.username ? `/${user.username}` : "/login"}
+              className="flex items-center gap-3 hover:opacity-80 transition-opacity flex-1"
+            >
               <Avatar className="h-10 w-10">
                 <AvatarImage
                   src={
@@ -71,43 +76,51 @@ export default function Home() {
                     "U"}
                 </AvatarFallback>
               </Avatar>
-              <div>
-                <p className="font-bold text-sm">
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-sm truncate">
                   {user.name || user.username || "用户"}
                 </p>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground truncate">
                   {user.username || "username"}
                 </p>
               </div>
-            </div>
-            <button className="text-blue-500 text-sm font-bold">切换</button>
+            </Link>
+            <Link
+              href="/login"
+              className="text-blue-500 text-sm font-bold hover:text-blue-600 transition-colors ml-2"
+            >
+              切换
+            </Link>
           </div>
+
+          {/* 为你推荐标题 */}
           <div className="flex items-center justify-between mb-4">
             <span className="font-bold text-muted-foreground">为你推荐</span>
-            <button className="text-sm font-bold hover:text-blue-500">
+            <button className="text-sm font-bold hover:text-blue-500 transition-colors">
               查看全部
             </button>
           </div>
+
           {/* 模拟推荐用户 */}
           {Array.from({ length: 5 }).map((_, i) => {
             const username = `suggested_user_${i}`;
             return (
               <div key={i} className="flex items-center justify-between py-2">
-                <div className="flex items-center gap-3">
-                  <Avatar className="h-10 w-10">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <Avatar className="h-10 w-10 shrink-0">
                     <AvatarImage
                       src={`https://i.pravatar.cc/150?u=${username}`}
                     />
                     <AvatarFallback>{username[0].toUpperCase()}</AvatarFallback>
                   </Avatar>
-                  <div>
-                    <p className="font-bold text-sm">{username}</p>
-                    <p className="text-xs text-muted-foreground">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-sm truncate">{username}</p>
+                    <p className="text-xs text-muted-foreground truncate">
                       New to Instagram
                     </p>
                   </div>
                 </div>
-                <button className="text-blue-500 text-sm font-bold">
+                <button className="text-blue-500 text-sm font-bold hover:text-blue-600 transition-colors shrink-0 ml-2">
                   关注
                 </button>
               </div>
