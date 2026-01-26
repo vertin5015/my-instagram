@@ -59,7 +59,7 @@ const ParsedCaption = ({
   const displayParts = shouldTruncate ? text.slice(0, 60).split(regex) : parts;
 
   return (
-    <div className="text-sm leading-relaxed break-words">
+    <div className="text-sm leading-relaxed wrap-break-word">
       {displayParts.map((part, index) => {
         if (part.startsWith("#")) {
           const tag = part.slice(1);

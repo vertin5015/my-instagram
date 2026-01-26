@@ -36,7 +36,7 @@ export default function Home() {
                 className="flex flex-col items-center space-y-1 shrink-0"
               >
                 {/* Story Ring */}
-                <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-yellow-400 to-purple-600 p-[2px]">
+                <div className="w-20 h-20 rounded-full bg-linear-to-tr from-yellow-400 to-purple-600 p-[2px]">
                   <Avatar className="w-full h-full border-2 border-background">
                     <AvatarImage
                       src={`https://i.pravatar.cc/150?u=${username}`}

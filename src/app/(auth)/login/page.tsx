@@ -75,7 +75,7 @@ export default function LoginPage() {
             Instagram
           </h1>
           {!isLogin && (
-            <p className="text-center text-muted-foreground font-bold text-gray-500 mb-4">
+            <p className="text-center text-muted-foreground font-bold mb-4">
               注册即可查看好友的照片和视频。
             </p>
           )}
@@ -136,9 +136,9 @@ export default function LoginPage() {
         </form>
 
         <div className="flex items-center gap-4 my-6">
-          <div className="h-[1px] bg-gray-200 flex-1" />
+          <div className="h-px bg-gray-200 flex-1" />
           <span className="text-xs text-gray-400 font-bold">OR</span>
-          <div className="h-[1px] bg-gray-200 flex-1" />
+          <div className="h-px bg-gray-200 flex-1" />
         </div>
 
         <div className="flex flex-col items-center gap-4 text-sm">
