@@ -13,6 +13,7 @@ export default function LoginPage() {
   // 表单状态
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
 
@@ -23,6 +24,14 @@ export default function LoginPage() {
   const { fetchUser } = useAuthStore();
 
   const handleSubmit = async (e: React.FormEvent) => {
+    if (!isLogin) {
+      if (password !== confirmPassword) {
+        setError("两次输入的密码不一致");
+        setLoading(false);
+        return;
+      }
+    }
+
     e.preventDefault();
     setError("");
     setLoading(true);
@@ -136,6 +145,18 @@ export default function LoginPage() {
             required
             minLength={6}
           />
+
+          {!isLogin && (
+            <Input
+              type="password"
+              placeholder="再次输入密码"
+              className="bg-gray-50 text-xs h-9 focus-visible:ring-1"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+              minLength={6}
+            />
+          )}
 
           <Button
             type="submit"
