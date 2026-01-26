@@ -11,14 +11,21 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 
-// 这是一个 Server Component
-export default function PostPage({ params }: { params: { id: string } }) {
-  // 模拟获取单个数据
+export default async function PostPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  // 2. 等待 params 解析
+  const resolvedParams = await params;
+  const id = resolvedParams.id;
+
+  // 3. 使用解析后的 id
   const post = {
-    id: params.id,
-    username: `user_${params.id}`,
-    imageUrl: `https://picsum.photos/seed/${Number(params.id) + 100}/800/800`,
-    caption: `Detailed view of post ${params.id}. Next.js App Router makes dynamic routing easy.`,
+    id: id,
+    username: `user_${id}`,
+    imageUrl: `https://picsum.photos/seed/${Number(id) + 100}/800/800`,
+    caption: `Detailed view of post ${id}. Next.js App Router makes dynamic routing easy.`,
     likes: 1024,
     timestamp: "2 DAYS AGO",
   };
