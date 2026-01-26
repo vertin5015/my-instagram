@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import {
   Home,
@@ -11,8 +13,11 @@ import {
   User,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAuthStore } from "@/store/auth-store";
 
 export default function SideNav() {
+  const { user } = useAuthStore();
+  
   // 模拟导航项
   const navItems = [
     { icon: Home, label: "首页", href: "/" },
@@ -21,7 +26,11 @@ export default function SideNav() {
     { icon: MessageCircle, label: "消息", href: "/messages" },
     { icon: Heart, label: "通知", href: "/notifications" },
     { icon: PlusSquare, label: "创建", href: "/create" },
-    { icon: User, label: "主页", href: "/profile" },
+    { 
+      icon: User, 
+      label: "主页", 
+      href: user?.username ? `/${user.username}` : "/login" 
+    },
   ];
 
   return (
@@ -29,7 +38,7 @@ export default function SideNav() {
       {/* 顶部 Logo 和 导航链接 */}
       <div className="space-y-8">
         {/* Logo: 大屏显示文字，小屏显示图标 */}
-        <Link href="/" className="flex items-center pl-3 mb-10">
+        <Link href="/" className="flex items-center pl-2 lg:pl-3 mb-10">
           <Instagram className="h-8 w-8 lg:hidden shrink-0" />
           <svg
             aria-label="Instagram"
@@ -55,7 +64,7 @@ export default function SideNav() {
             <Link
               key={item.label}
               href={item.href}
-              className="flex items-center gap-4 p-3 hover:bg-accent rounded-lg transition-colors group"
+              className="flex items-center gap-4 py-3 px-1.5 lg:px-3 hover:bg-accent rounded-lg transition-colors group"
             >
               <item.icon className="h-7 w-7 group-hover:scale-105 transition-transform shrink-0" />
               {/* 文字在 lg 以下隐藏 */}

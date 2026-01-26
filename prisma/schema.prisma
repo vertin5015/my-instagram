@@ -8,68 +8,68 @@ datasource db {
   provider = "postgresql"
 }
 
-// 1. 用户模型 (User)
-// 包含 NextAuth 需要的字段以及 Ins 特有的字段
 model User {
-  id            String    @id @default(cuid()) // 使用 CUID 作为主键，比 UUID 更适合 URL
-  name          String?   // 显示名称
-  username      String?   @unique // 唯一用户名 (如 ins_user_001)
+  id            String    @id @default(cuid())
+  name          String?
+  username      String?   @unique
   email         String?   @unique
   emailVerified DateTime?
-  image         String?   // 头像 URL
-  bio           String?   // 个人简介 (Ins 特有)
-  website       String?   // 个人链接 (预留)
-  
-  // 密码 (如果是邮箱密码登录则需要，如果是 OAuth 则可选)
+  image         String?
+  bio           String?
+  website       String?
   hashedPassword String?
 
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  // 关系定义
   posts         Post[]
   comments      Comment[]
   likes         Like[]
-  saved         SavedPost[] // 收藏夹 (预留)
+  saved         SavedPost[]
   
-  // 关注系统 (自关联)
   followedBy    Follows[] @relation("following")
   following     Follows[] @relation("follower")
 
-  // NextAuth 必须的关联表
   accounts      Account[]
   sessions      Session[]
 }
 
-// 2. 帖子模型 (Post)
 model Post {
   id        String   @id @default(cuid())
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
+
   caption   String?
-  imageUrl  String   // S3 或 R2 的图片地址
   
-  // 预留：为了未来支持多图轮播 (Carousel)
-  // 如果做多图，可以新建一个 PostImage 表，这里简化为单图
-  
+  // --- 修改点：支持多图 ---
+  // PostgreSQL 支持原生数组，直接存 ["url1", "url2"]
+  // 这完美匹配你组件中的 post.images (string[])
+  images    String[] 
+
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   comments  Comment[]
   likes     Like[]
   savedBy   SavedPost[]
+  
+  // --- 建议添加：Tag 关联 (优化搜索) ---
+  tags      Tag[]
 
-  // 索引优化查询速度
   @@index([userId])
 }
 
-// 3. 评论模型 (Comment)
+// --- 新增：标签模型 (用于高性能搜索) ---
+model Tag {
+  id    String @id @default(cuid())
+  name  String @unique // 例如 "react", "nextjs"
+  posts Post[]
+}
+
 model Comment {
   id        String   @id @default(cuid())
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
   body      String
   
   userId    String
@@ -82,65 +82,59 @@ model Comment {
   @@index([userId])
 }
 
-// 4. 点赞模型 (Like)
-// 使用单独的表而不是计数器，是为了知道“谁”点了赞，防止重复点赞
 model Like {
   id        String   @id @default(cuid())
   createdAt DateTime @default(now())
-
+  
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
+  
   postId    String
   post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
 
-  // 复合唯一约束：确保一个用户对一个帖子只能点赞一次
   @@unique([userId, postId])
   @@index([userId])
   @@index([postId])
 }
 
-// 5. 关注模型 (Follows) - 难点
-// 这是一个多对多关系的中间表
 model Follows {
   followerId  String
   followingId String
-
+  
   follower    User   @relation("follower", fields: [followerId], references: [id])
   following   User   @relation("following", fields: [followingId], references: [id])
 
-  @@id([followerId, followingId]) // 联合主键
+  @@id([followerId, followingId])
   @@index([followerId])
   @@index([followingId])
 }
 
-// 6. 收藏模型 (SavedPost) - 预留功能
 model SavedPost {
   id        String   @id @default(cuid())
   createdAt DateTime @default(now())
-
+  
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
+  
   postId    String
   post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
 
   @@unique([userId, postId])
 }
 
-// --- 以下是 NextAuth 必须的适配器模型 (直接复制即可) ---
+// NextAuth Models (保持不变)
 model Account {
   id                 String  @id @default(cuid())
   userId             String
   type               String
   provider           String
   providerAccountId  String
-  refresh_token      String?  @db.Text
-  access_token       String?  @db.Text
+  refresh_token      String? @db.Text
+  access_token       String? @db.Text
   expires_at         Int?
   token_type         String?
   scope              String?
-  id_token           String?  @db.Text
+  id_token           String? @db.Text
   session_state      String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)

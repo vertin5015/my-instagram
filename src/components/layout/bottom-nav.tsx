@@ -5,7 +5,7 @@ import { Home, Search, PlusSquare, Heart, User } from "lucide-react";
 import { useAuthStore } from "@/store/auth-store";
 
 export default function BottomNav() {
-  const { isAuthenticated } = useAuthStore();
+  const { user } = useAuthStore();
 
   const navItems = [
     { icon: Home, label: "首页", href: "/" },
@@ -15,7 +15,7 @@ export default function BottomNav() {
     {
       icon: User,
       label: "主页",
-      href: isAuthenticated ? "/profile" : "/login",
+      href: user?.username ? `/${user.username}` : "/login",
     },
   ];
 
