@@ -31,9 +31,10 @@ export default function Home() {
           {Array.from({ length: 5 }).map((_, i) => {
             const username = `user_${i}`;
             return (
-              <div
+              <Link
                 key={i}
-                className="flex flex-col items-center space-y-1 shrink-0"
+                href={`/${username}`}
+                className="flex flex-col items-center space-y-1 shrink-0 hover:opacity-80 transition-opacity"
               >
                 {/* Story Ring */}
                 <div className="w-20 h-20 rounded-full bg-linear-to-tr from-yellow-400 to-purple-600 p-[2px]">
@@ -45,8 +46,10 @@ export default function Home() {
                   </Avatar>
                 </div>
 
-                <span className="text-xs">{username}</span>
-              </div>
+                <span className="text-xs truncate max-w-[72px]">
+                  {username}
+                </span>
+              </Link>
             );
           })}
         </div>
@@ -106,7 +109,10 @@ export default function Home() {
             const username = `suggested_user_${i}`;
             return (
               <div key={i} className="flex items-center justify-between py-2">
-                <div className="flex items-center gap-3 flex-1 min-w-0">
+                <Link
+                  href={`/${username}`}
+                  className="flex items-center gap-3 flex-1 min-w-0 hover:opacity-80 transition-opacity"
+                >
                   <Avatar className="h-10 w-10 shrink-0">
                     <AvatarImage
                       src={`https://i.pravatar.cc/150?u=${username}`}
@@ -119,7 +125,7 @@ export default function Home() {
                       New to Instagram
                     </p>
                   </div>
-                </div>
+                </Link>
                 <button className="text-blue-500 text-sm font-bold hover:text-blue-600 transition-colors shrink-0 ml-2">
                   关注
                 </button>

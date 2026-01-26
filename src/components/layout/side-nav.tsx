@@ -34,11 +34,11 @@ export default function SideNav() {
   ];
 
   return (
-    <div className="flex h-full flex-col justify-between py-6 px-3 lg:pl-7 lg:pr-0">
+    <div className="flex h-full flex-col justify-between py-6 px-3 lg:px-5">
       {/* 顶部 Logo 和 导航链接 */}
       <div className="space-y-8">
         {/* Logo: 大屏显示文字，小屏显示图标 */}
-        <Link href="/" className="flex items-center pl-1.5 lg:pl-3 mb-10">
+        <Link href="/" className="flex items-center pl-2 lg:pl-3 lg:mt-2 mb-10">
           <Instagram className="h-8 w-8 lg:hidden shrink-0" />
           <svg
             aria-label="Instagram"
