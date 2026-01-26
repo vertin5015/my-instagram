@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
 
 // JWT 密钥，应该从环境变量中获取
-const JWT_SECRET = process.env.JWT_SECRET || "your-super-secret-jwt-key-change-in-production";
+const JWT_SECRET = process.env.JWT_SECRET || "";
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d";
 
 export interface TokenPayload {
@@ -14,7 +14,8 @@ export interface TokenPayload {
  */
 export function generateToken(payload: TokenPayload): string {
   return jwt.sign(payload, JWT_SECRET, {
-    expiresIn: JWT_EXPIRES_IN,
+    // 强制转换为 any 或者 jsonwebtoken 定义的 SignOptions["expiresIn"] 类型
+    expiresIn: JWT_EXPIRES_IN as any,
   });
 }
 

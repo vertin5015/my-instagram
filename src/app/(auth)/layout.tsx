@@ -1,12 +1,23 @@
+import Image from "next/image";
+
 export default function AuthLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-black">
-      {/* 这里可以加一些全屏的背景或者是 Instagram 风格的布局 */}
-      <div className="w-full max-w-md">{children}</div>
+    <div className="relative min-h-screen flex items-center justify-center overflow-hidden">
+      {/* 背景图 */}
+      <Image
+        src="/auth-bg.jpg"
+        alt="background"
+        fill
+        priority
+        className="object-cover"
+      />
+
+      {/* 表单内容 */}
+      <div className="relative z-10 w-full max-w-md px-4">{children}</div>
     </div>
   );
 }

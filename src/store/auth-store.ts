@@ -24,7 +24,7 @@ export const useAuthStore = create<AuthState>()(
     (set, get) => ({
       user: null,
       isAuthenticated: false,
-      isLoading: false,
+      isLoading: true, // 建议初始为 true，避免页面闪烁
       setUser: (user) =>
         set({
           user,
@@ -34,7 +34,9 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: true });
         try {
           const response = await fetch("/api/auth/me", {
-            credentials: "include", // 确保发送 cookies
+            // 必须加上这个，否则 Next.js 可能会缓存结果导致状态不更新
+            cache: "no-store",
+            credentials: "include",
           });
 
           if (response.ok) {
@@ -73,13 +75,21 @@ export const useAuthStore = create<AuthState>()(
             user: null,
             isAuthenticated: false,
           });
+          // 强制刷新页面或跳转，清除内存状态
+          window.location.href = "/login";
         }
       },
     }),
     {
       name: "auth-storage",
-      // 只持久化用户信息，不持久化认证状态（从 cookie 中获取）
       partialize: (state) => ({ user: state.user }),
+      // ✅ 关键修复：当从 localStorage 恢复数据完成后，立即计算 isAuthenticated
+      onRehydrateStorage: () => (state) => {
+        if (state && state.user) {
+          state.isAuthenticated = true;
+          state.isLoading = false; // 既然有缓存用户，先认为加载完成
+        }
+      },
     }
   )
 );
