@@ -1,5 +1,6 @@
 import SideNav from "@/components/layout/side-nav";
 import BottomNav from "@/components/layout/bottom-nav";
+import { CreatePostModal } from "@/components/create-post/create-post-modal";
 
 export default function MainLayout({
   children,
@@ -19,6 +20,8 @@ export default function MainLayout({
       <footer className="fixed bottom-0 left-0 right-0 border-t bg-background z-50 md:hidden">
         <BottomNav />
       </footer>
+
+      <CreatePostModal />
     </div>
   );
 }

@@ -14,18 +14,19 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/store/auth-store";
+import { useCreatePostStore } from "@/store/create-post-store";
 
 export default function SideNav() {
   const { user } = useAuthStore();
+  const openCreatePost = useCreatePostStore((s) => s.open);
 
-  // 模拟导航项
   const navItems = [
     { icon: Home, label: "首页", href: "/" },
     { icon: Search, label: "搜索", href: "/search" },
     { icon: Compass, label: "发现", href: "/explore" },
     { icon: MessageCircle, label: "消息", href: "/messages" },
     { icon: Heart, label: "通知", href: "/notification" },
-    { icon: PlusSquare, label: "创建", href: "/create" },
+    { icon: PlusSquare, label: "创建", href: "#", onClick: openCreatePost }, // 绑定点击事件
     {
       icon: User,
       label: "主页",
@@ -62,10 +63,15 @@ export default function SideNav() {
             <Link
               key={item.label}
               href={item.href}
+              onClick={(e) => {
+                if (item.onClick) {
+                  e.preventDefault(); // 阻止跳转
+                  item.onClick();
+                }
+              }}
               className="flex items-center gap-4 py-3 px-1.5 lg:px-3 hover:bg-accent rounded-lg transition-colors group"
             >
               <item.icon className="h-7 w-7 group-hover:scale-105 transition-transform shrink-0" />
-              {/* 文字在 lg 以下隐藏 */}
               <span className="hidden lg:block text-base font-medium truncate">
                 {item.label}
               </span>
