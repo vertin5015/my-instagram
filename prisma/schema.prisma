@@ -41,9 +41,6 @@ model Post {
 
   caption   String?
   
-  // --- 修改点：支持多图 ---
-  // PostgreSQL 支持原生数组，直接存 ["url1", "url2"]
-  // 这完美匹配你组件中的 post.images (string[])
   images    String[] 
 
   userId    String

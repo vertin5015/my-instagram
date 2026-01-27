@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuthStore } from "@/store/auth-store";
+import { useAuthStore, User } from "@/store/auth-store"; // 确保引入 User 类型
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+// ✅ 引入 Server Actions
+import { loginAction, registerAction } from "@/actions/auth";
 
 export default function LoginPage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -21,52 +23,55 @@ export default function LoginPage() {
   const [error, setError] = useState("");
 
   const router = useRouter();
-  const { fetchUser } = useAuthStore();
+  const { fetchUser, setUser } = useAuthStore(); // 解构出 setUser 以便优化
 
   const isUsernameValid = /^[a-zA-Z0-9_.]+$/.test(username) || username === "";
 
   const handleSubmit = async (e: React.FormEvent) => {
-    if (!isLogin) {
-      if (password !== confirmPassword) {
-        setError("两次输入的密码不一致");
-        setLoading(false);
-        return;
-      }
+    e.preventDefault();
+
+    // 前端基础校验
+    if (!isLogin && password !== confirmPassword) {
+      setError("两次输入的密码不一致");
+      return;
     }
 
-    e.preventDefault();
     setError("");
     setLoading(true);
 
     try {
-      const url = isLogin ? "/api/auth/login" : "/api/auth/register";
-      const body = isLogin
-        ? { email, password }
-        : { email, password, name, username };
+      let response;
 
-      const response = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(body),
-      });
-
-      const contentType = response.headers.get("content-type");
-      if (!contentType || !contentType.includes("application/json")) {
-        throw new Error("服务器响应格式错误");
+      if (isLogin) {
+        // ✅ 调用登录 Action
+        // 第一个参数 prevState 我们可以传 null，因为我们没用 useFormState
+        response = await loginAction(null, { email, password });
+      } else {
+        // ✅ 调用注册 Action
+        response = await registerAction(null, {
+          email,
+          password,
+          name,
+          username,
+        });
       }
 
-      const data = await response.json();
+      if (!response.success) {
+        setError(response.error || "操作失败");
+      } else {
+        // 成功逻辑
+        // 优化：Action 已经返回了最新的 User 数据，我们可以直接更新 Store，
+        // 而不需要再次调用 fetchUser() 发起一次网络请求。
+        if (response.data) {
+          setUser(response.data as User);
+        } else {
+          // 如果没返回数据，作为兜底再拉取一次
+          await fetchUser();
+        }
 
-      if (!response.ok) {
-        setError(data.error || "操作失败");
-        return;
+        router.push("/");
+        router.refresh();
       }
-
-      // 登录/注册成功后，从服务器获取用户信息（从 cookie 中验证）
-      await fetchUser();
-      router.push("/");
-      router.refresh();
     } catch (err) {
       console.error(err);
       setError("网络错误，请检查您的连接或稍后重试");
@@ -77,10 +82,8 @@ export default function LoginPage() {
 
   return (
     <div className="flex flex-col gap-4 w-full max-w-[350px] mx-auto">
-      {/* 主卡片：Logo + 表单 */}
       <Card className="border p-8 shadow-none bg-white rounded-sm">
         <div className="flex flex-col items-center">
-          {/* 这里可以使用 Instagram 的图片 Logo，暂时用文字代替 */}
           <svg
             aria-label="Instagram"
             className="block"
@@ -138,12 +141,10 @@ export default function LoginPage() {
                   }`}
                   value={username}
                   onChange={(e) => {
-                    // 建议不要在这里 replace，而是保留用户的输入，但在提交时或下方校验
                     setUsername(e.target.value.toLowerCase());
                   }}
                   required
                 />
-                {/* 动态错误提示 */}
                 {username && !/^[a-zA-Z0-9_.]+$/.test(username) && (
                   <p className="text-[10px] text-red-500 ml-1">
                     用户名只能包含英文字母、数字、下划线和句点。
@@ -184,27 +185,17 @@ export default function LoginPage() {
           </Button>
         </form>
 
-        {/* <div className="flex items-center gap-4 my-6">
-          <div className="h-px bg-gray-200 flex-1" />
-          <span className="text-xs text-gray-400 font-bold">OR</span>
-          <div className="h-px bg-gray-200 flex-1" />
-        </div> */}
-
-        <div className="flex flex-col items-center gap-4 text-sm">
-          {/* <button className="text-[#385185] font-bold text-xs flex items-center gap-2">
-            Facebook 登录 (演示)
-          </button> */}
+        <div className="flex flex-col items-center gap-4 text-sm mt-4">
           {isLogin && (
             <button className="text-xs text-blue-900/80">忘记密码？</button>
           )}
         </div>
-        <p className="flex justify-center items-center text-sm">
+        <p className="flex justify-center items-center text-sm mt-4">
           {isLogin ? "没有账号？" : "已有账号？"}
           <button
             onClick={() => {
               setIsLogin(!isLogin);
               setError("");
-              // 清空字段防止混淆
               if (isLogin) {
                 setName("");
                 setUsername("");
@@ -216,27 +207,6 @@ export default function LoginPage() {
           </button>
         </p>
       </Card>
-
-      {/* 底部卡片：切换登录/注册 */}
-      {/* <Card className="border p-5 text-center shadow-none rounded-none md:rounded-sm">
-        <p className="text-sm">
-          {isLogin ? "没有账号？" : "已有账号？"}
-          <button
-            onClick={() => {
-              setIsLogin(!isLogin);
-              setError("");
-              // 清空字段防止混淆
-              if (isLogin) {
-                setName("");
-                setUsername("");
-              }
-            }}
-            className="text-sky-500 font-bold ml-1 hover:text-sky-600 transition"
-          >
-            {isLogin ? "注册" : "登录"}
-          </button>
-        </p>
-      </Card> */}
     </div>
   );
 }
