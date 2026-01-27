@@ -15,9 +15,14 @@ type ActionResponse<T = any> = {
 
 // --- 1. 注册 Action ---
 export async function registerAction(
-  prevState: any,
-  formData: { email: string; password: string; username: string; name: string }
-): Promise<ActionResponse<Partial<User>>> {
+  p0: null,
+  formData: {
+    email: string;
+    password: string;
+    username: string;
+    name: string;
+  }
+): Promise<ActionResponse<Omit<User, "hashedPassword">>> {
   try {
     const { email, password, username, name } = formData;
 
@@ -25,7 +30,6 @@ export async function registerAction(
       return { success: false, error: "所有字段都是必填项" };
     }
 
-    // 检查唯一性
     const existingUser = await prisma.user.findFirst({
       where: {
         OR: [{ email }, { username }],
@@ -51,8 +55,8 @@ export async function registerAction(
       await createAuthSession(user.id, user.email);
     }
 
-    const { hashedPassword: _, ...userWithoutPassword } = user;
-    return { success: true, data: userWithoutPassword };
+    const { hashedPassword: _, ...safeUser } = user;
+    return { success: true, data: safeUser };
   } catch (error) {
     console.error("[REGISTER_ACTION_ERROR]", error);
     return { success: false, error: "注册失败，请稍后重试" };
@@ -61,9 +65,12 @@ export async function registerAction(
 
 // --- 2. 登录 Action ---
 export async function loginAction(
-  prevState: any,
-  formData: { email: string; password: string }
-): Promise<ActionResponse<Partial<User>>> {
+  p0: null,
+  formData: {
+    email: string;
+    password: string;
+  }
+): Promise<ActionResponse<Omit<User, "hashedPassword">>> {
   try {
     const { email, password } = formData;
 
@@ -79,9 +86,8 @@ export async function loginAction(
       return { success: false, error: "账号不存在或密码错误" };
     }
 
-    const isPasswordValid = await bcrypt.compare(password, user.hashedPassword);
-
-    if (!isPasswordValid) {
+    const isValid = await bcrypt.compare(password, user.hashedPassword);
+    if (!isValid) {
       return { success: false, error: "账号不存在或密码错误" };
     }
 
@@ -89,8 +95,8 @@ export async function loginAction(
       await createAuthSession(user.id, user.email);
     }
 
-    const { hashedPassword: _, ...userWithoutPassword } = user;
-    return { success: true, data: userWithoutPassword };
+    const { hashedPassword: _, ...safeUser } = user;
+    return { success: true, data: safeUser };
   } catch (error) {
     console.error("[LOGIN_ACTION_ERROR]", error);
     return { success: false, error: "服务器内部错误" };
@@ -117,9 +123,6 @@ export async function getSessionAction(): Promise<
     if (!user) {
       return { success: false, data: null };
     }
-    // Prisma 返回的对象可能包含 Date 对象，Server Actions 返回给 Client 时需要序列化
-    // Next.js 现在的 Server Actions 已经支持自动序列化大部分简单对象，但为了保险起见，
-    // 如果 user 对象里有复杂类型，可能需要手动处理。这里假设 User 结构比较简单。
     return { success: true, data: user };
   } catch (error) {
     console.error("[GET_SESSION_ACTION_ERROR]", error);
