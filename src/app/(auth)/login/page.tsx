@@ -23,6 +23,8 @@ export default function LoginPage() {
   const router = useRouter();
   const { fetchUser } = useAuthStore();
 
+  const isUsernameValid = /^[a-zA-Z0-9_.]+$/.test(username) || username === "";
+
   const handleSubmit = async (e: React.FormEvent) => {
     if (!isLogin) {
       if (password !== confirmPassword) {
@@ -123,16 +125,31 @@ export default function LoginPage() {
                 className="bg-gray-50 text-xs py-2 h-9 focus-visible:ring-1"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                required // 强制必填
+                required
               />
-              <Input
-                type="text"
-                placeholder="用户名 (User ID)"
-                className="bg-gray-50 text-xs py-2 h-9 focus-visible:ring-1"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                required // 强制必填
-              />
+              <div className="flex flex-col gap-1">
+                <Input
+                  type="text"
+                  placeholder="用户名 (User ID)"
+                  className={`bg-gray-50 text-xs py-2 h-9 focus-visible:ring-1 ${
+                    !isUsernameValid
+                      ? "border-red-500 focus-visible:ring-red-500"
+                      : ""
+                  }`}
+                  value={username}
+                  onChange={(e) => {
+                    // 建议不要在这里 replace，而是保留用户的输入，但在提交时或下方校验
+                    setUsername(e.target.value.toLowerCase());
+                  }}
+                  required
+                />
+                {/* 动态错误提示 */}
+                {username && !/^[a-zA-Z0-9_.]+$/.test(username) && (
+                  <p className="text-[10px] text-red-500 ml-1">
+                    用户名只能包含英文字母、数字、下划线和句点。
+                  </p>
+                )}
+              </div>
             </>
           )}
 

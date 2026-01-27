@@ -5,13 +5,13 @@ import Image from "next/image";
 
 type Props = {
   children: React.ReactNode;
-  params: Promise<{ id: string }>;
+  params: Promise<{ username: string }>;
 };
 
 export default async function ProfileLayout({ children, params }: Props) {
   // 3. 等待 params 解析
   const resolvedParams = await params;
-  const username = decodeURIComponent(resolvedParams.id);
+  const username = resolvedParams.username;
 
   return (
     <div className="flex flex-col items-center w-full pb-16">
