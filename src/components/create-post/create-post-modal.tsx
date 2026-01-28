@@ -10,6 +10,7 @@ import { useAuthStore } from "@/store/auth-store";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
+import { createPost } from "@/actions/create-post";
 
 import { CreatePostUpload } from "./create-post-upload";
 import { ImageCarousel } from "./image-carousel";
@@ -21,6 +22,7 @@ export function CreatePostModal() {
     isOpen,
     step,
     imagePreviewUrls,
+    imageFiles,
     caption,
     close,
     setStep,
@@ -31,6 +33,7 @@ export function CreatePostModal() {
 
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const emojiRef = useRef<HTMLDivElement>(null);
+  const [isSharing, setIsSharing] = useState(false);
 
   // 清理内存
   useEffect(() => {
@@ -95,8 +98,25 @@ export function CreatePostModal() {
   }, [isOpen, handleSafeClose]);
 
   const handleShare = async () => {
-    console.log("Sharing post:", { images: imagePreviewUrls, caption });
-    setStep("success");
+    if (!imageFiles.length || isSharing) return;
+    try {
+      setIsSharing(true);
+      const formData = new FormData();
+      formData.append("caption", caption || "");
+      for (const file of imageFiles) {
+        formData.append("images", file);
+      }
+      await createPost(formData);
+      setStep("success");
+      setImages([]);
+      setCaption("");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "发布失败，请稍后重试";
+      window.alert(msg);
+    } finally {
+      setIsSharing(false);
+      close();
+    }
   };
 
   const onEmojiClick = (emojiData: EmojiClickData) => {
@@ -179,8 +199,9 @@ export function CreatePostModal() {
                 variant="ghost"
                 className="text-[#0095f6] hover:text-[#00376b] font-semibold hover:bg-transparent p-0 text-sm"
                 onClick={handleShare}
+                disabled={isSharing || imageFiles.length === 0}
               >
-                分享
+                {isSharing ? "发布中..." : "分享"}
               </Button>
             )}
           </div>
