@@ -1,21 +1,26 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { ChevronLeft } from "lucide-react";
+import { useEffect, useState, useRef } from "react";
+import { ArrowLeft, Smile } from "lucide-react";
+import EmojiPicker, { Theme, EmojiClickData } from "emoji-picker-react";
+import Image from "next/image";
+
 import { useCreatePostStore } from "@/store/create-post-store";
 import { useAuthStore } from "@/store/auth-store";
-import { CreatePostUpload } from "./create-post-upload";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
-import Image from "next/image";
+
+import { CreatePostUpload } from "./create-post-upload";
+import { ImageCarousel } from "./image-carousel";
+
+const MAX_CHAR = 2200;
 
 export function CreatePostModal() {
   const {
     isOpen,
     step,
     imagePreviewUrls,
-    imageFiles,
     caption,
     close,
     setStep,
@@ -24,73 +29,122 @@ export function CreatePostModal() {
   } = useCreatePostStore();
   const { user } = useAuthStore();
 
-  // 清理预览 URL，避免内存泄漏
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const emojiRef = useRef<HTMLDivElement>(null);
+
+  // 清理内存
   useEffect(() => {
-    return () => {
-      imagePreviewUrls.forEach((url) => URL.revokeObjectURL(url));
-    };
+    return () => imagePreviewUrls.forEach((url) => URL.revokeObjectURL(url));
   }, [imagePreviewUrls]);
 
-  const handleBack = useCallback(() => {
-    if (step === "upload") {
-      close();
+  // 点击外部关闭 Emoji 选择器
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        emojiRef.current &&
+        !emojiRef.current.contains(event.target as Node)
+      ) {
+        setShowEmojiPicker(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleBack = () => {
+    if (step === "crop") {
+      // 返回上传页，需要确认是否丢弃（这里简单处理为直接清空）
+      const confirm = window.confirm(
+        "要放弃帖子吗？如果离开，所做的修改将会丢失。"
+      );
+      if (confirm) {
+        setImages([]);
+        setStep("upload");
+      }
     } else if (step === "caption") {
-      setStep("upload");
+      setStep("crop");
     }
-  }, [step, close, setStep]);
+  };
 
-  const handleUploadNext = useCallback(() => {
-    if (imageFiles.length > 0) setStep("caption");
-  }, [imageFiles.length, setStep]);
-
-  const handleShare = useCallback(() => {
-    // 前端先只做“发帖成功”展示，后续再接接口
+  const handleShare = async () => {
+    // 这里调用后端 API
+    console.log("Sharing post:", { images: imagePreviewUrls, caption });
     setStep("success");
-  }, [setStep]);
+  };
 
-  const handleClose = useCallback(() => {
-    close();
-  }, [close]);
+  const onEmojiClick = (emojiData: EmojiClickData) => {
+    if (caption.length + emojiData.emoji.length <= MAX_CHAR) {
+      setCaption(caption + emojiData.emoji);
+    }
+  };
 
   if (!isOpen) return null;
 
+  // 动态计算 Modal 宽度：上传和预览页较窄，填写文案页变宽
+  const modalWidthClass =
+    step === "caption"
+      ? "max-w-[850px]"
+      : "max-w-[500px] aspect-square min-h-[300px]";
+
   return (
     <div
-      className="fixed inset-0 z-100 flex items-center justify-center bg-black/70"
-      role="dialog"
-      aria-modal
-      aria-label="新建帖子"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+      onClick={close}
     >
+      {/* 关闭按钮 (右上角) */}
+      <button
+        onClick={close}
+        className="absolute top-4 right-4 text-white/80 hover:text-white"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M18 6 6 18" />
+          <path d="m6 6 12 12" />
+        </svg>
+      </button>
+
       <div
+        onClick={(e) => e.stopPropagation()}
         className={cn(
-          "bg-background max-h-[90vh] w-full max-w-[900px] overflow-hidden rounded-xl shadow-2xl",
-          "flex flex-col",
-          step === "success" && "max-w-[400px]"
+          "bg-background w-full overflow-hidden rounded-xl shadow-2xl flex flex-col transition-all duration-300 ease-in-out",
+          step === "upload" || step === "crop"
+            ? "h-[50vh] md:h-[500px]"
+            : "h-[50vh] md:h-[500px]", // 保持高度一致避免抖动
+          modalWidthClass
         )}
       >
-        {/* 顶部栏：返回 | 标题 | 主操作 */}
-        <header className="flex h-12 shrink-0 items-center justify-between border-b px-4">
-          <button
-            type="button"
-            onClick={handleBack}
-            className="flex size-9 items-center justify-center rounded-full hover:bg-accent -ml-1"
-            aria-label="返回"
-          >
-            <ChevronLeft className="h-6 w-6" />
-          </button>
-          <span className="text-base font-semibold">
-            {step === "upload" && "新建帖子"}
-            {step === "caption" && "编辑"}
-            {step === "success" && "发帖成功"}
-          </span>
-          <div className="w-9">
-            {step === "upload" && (
+        {/* --- Header --- */}
+        <header className="flex h-[44px] shrink-0 items-center justify-between border-b px-4">
+          <div className="w-10">
+            {step !== "upload" && step !== "success" && (
+              <button onClick={handleBack} className="p-1">
+                <ArrowLeft className="h-6 w-6" />
+              </button>
+            )}
+          </div>
+
+          <h1 className="text-base font-semibold truncate">
+            {step === "upload" && "创建新帖子"}
+            {step === "crop" && "裁剪"}
+            {step === "caption" && "创建新帖子"}
+            {step === "success" && "帖子已发布"}
+          </h1>
+
+          <div className="w-10 flex justify-end">
+            {step === "crop" && (
               <Button
                 variant="ghost"
-                size="sm"
-                className="text-primary font-semibold"
-                disabled={imageFiles.length === 0}
-                onClick={handleUploadNext}
+                className="text-[#0095f6] hover:text-[#00376b] font-semibold hover:bg-transparent p-0"
+                onClick={() => setStep("caption")}
               >
                 下一步
               </Button>
@@ -98,8 +152,7 @@ export function CreatePostModal() {
             {step === "caption" && (
               <Button
                 variant="ghost"
-                size="sm"
-                className="text-primary font-semibold"
+                className="text-[#0095f6] hover:text-[#00376b] font-semibold hover:bg-transparent p-0"
                 onClick={handleShare}
               >
                 分享
@@ -108,125 +161,130 @@ export function CreatePostModal() {
           </div>
         </header>
 
-        {/* 内容区：从左到右的步骤切换 */}
-        <div className="relative flex-1 overflow-hidden min-h-[420px]">
+        {/* --- Body --- */}
+        <div className="flex flex-1 overflow-hidden">
+          {/* 成功状态 */}
           {step === "success" ? (
-            <div className="flex flex-col items-center justify-center gap-4 py-12 px-6">
-              <div className="rounded-full bg-primary/10 p-4">
-                <svg
-                  className="h-10 w-10 text-primary"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M5 13l4 4L19 7"
-                  />
-                </svg>
+            <div className="flex w-full flex-col items-center justify-center gap-4 animate-in zoom-in-95">
+              <div className="rounded-full bg-linear-to-tr from-yellow-400 via-pink-500 to-purple-600 p-[2px]">
+                <div className="rounded-full bg-background p-4">
+                  <Image
+                    src="/check.png"
+                    alt="Success"
+                    width={60}
+                    height={60}
+                    className="hidden"
+                  />{" "}
+                  {/* 可以换成 Icon */}
+                  <svg
+                    className="h-12 w-12 text-transparent bg-clip-text bg-linear-to-tr from-yellow-400 via-pink-500 to-purple-600 animate-pulse"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 13l4 4L19 7"
+                      stroke="#d946ef"
+                    />
+                  </svg>
+                </div>
               </div>
-              <p className="text-lg font-semibold">发帖成功</p>
-              <Button onClick={handleClose}>完成</Button>
+              <h2 className="text-xl font-medium">帖子已发布</h2>
+              <Button
+                variant="ghost"
+                className="text-[#0095f6]"
+                onClick={close}
+              >
+                完成
+              </Button>
             </div>
           ) : (
-            <div className="overflow-hidden h-full">
+            <>
+              {/* 左侧：图片区域 (在 caption 步骤时只占一部分，其他时候占满) */}
               <div
-                className="flex w-[200%] h-full transition-[transform] duration-300 ease-out"
-                style={{
-                  transform:
-                    step === "upload" ? "translateX(0)" : "translateX(-50%)",
-                }}
+                className={cn(
+                  "relative transition-all duration-300 ease-in-out bg-black",
+                  step === "caption"
+                    ? "hidden md:block w-[60%] border-r border-border"
+                    : "w-full",
+                  step === "upload" && "bg-background" // 上传页不需要黑色背景
+                )}
               >
-                {/* 第一步：上传 */}
-                <div className="w-1/2 shrink-0 p-4 flex flex-col">
-                  <CreatePostUpload
-                    onImagesSelected={(files) => setImages(files)}
-                    maxCount={10}
-                  />
-                </div>
-                {/* 第二步：编辑文案 */}
-                <div className="w-1/2 shrink-0 flex min-h-[400px]">
-                  <CaptionImageCarousel urls={imagePreviewUrls} />
-                  <div className="flex w-[340px] shrink-0 flex-col border-l">
-                    <div className="flex items-center gap-3 border-b px-4 py-3">
-                      <Avatar size="sm" className="size-8">
-                        <AvatarImage src={user?.image ?? undefined} alt="" />
-                        <AvatarFallback>
-                          {(user?.username ?? user?.name ?? "?").slice(0, 1)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className="font-semibold">
-                        {user?.username ?? user?.name ?? "用户"}
-                      </span>
-                    </div>
-                    <textarea
-                      value={caption}
-                      onChange={(e) => setCaption(e.target.value)}
-                      placeholder="撰写文案..."
-                      className="min-h-[200px] flex-1 resize-none border-0 bg-transparent px-4 py-3 text-sm outline-none placeholder:text-muted-foreground"
-                      rows={6}
-                    />
-                  </div>
-                </div>
+                {step === "upload" ? (
+                  <CreatePostUpload onImagesSelected={setImages} />
+                ) : (
+                  <ImageCarousel urls={imagePreviewUrls} />
+                )}
               </div>
-            </div>
+
+              {/* 右侧：文案填写 (仅在 caption 步骤显示) */}
+              {step === "caption" && (
+                <div className="flex flex-col w-full md:w-[40%] bg-background">
+                  {/* 用户信息 */}
+                  <div className="flex items-center gap-3 p-4">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={user?.image || undefined} />
+                      <AvatarFallback>
+                        {user?.username?.[0]?.toUpperCase() || "U"}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="font-semibold text-sm">
+                      {user?.username}
+                    </span>
+                  </div>
+
+                  {/* 输入框 */}
+                  <textarea
+                    value={caption}
+                    onChange={(e) =>
+                      setCaption(e.target.value.slice(0, MAX_CHAR))
+                    }
+                    placeholder="撰写说明..."
+                    className="flex-1 resize-none border-none p-4 text-sm outline-none leading-relaxed"
+                    autoFocus
+                  />
+
+                  {/* 工具栏：Emoji & 字数 */}
+                  <div className="relative flex items-center justify-between px-4 py-3 border-t md:border-t-0">
+                    <div className="relative" ref={emojiRef}>
+                      <button
+                        onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                        className="text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        <Smile className="h-6 w-6" />
+                      </button>
+
+                      {/* Emoji Picker Popover */}
+                      {showEmojiPicker && (
+                        <div className="absolute bottom-10 left-0 z-50 shadow-xl">
+                          <EmojiPicker
+                            onEmojiClick={onEmojiClick}
+                            width={300}
+                            height={350}
+                            theme={Theme.AUTO} // 自适应暗黑模式
+                            searchDisabled
+                            previewConfig={{ showPreview: false }}
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    <span className="text-xs text-muted-foreground font-medium">
+                      {caption.length}/{MAX_CHAR}
+                    </span>
+                  </div>
+
+                  {/* 可以在这里加 "添加地点" 等选项，模仿 Ins 布局 */}
+                  <div className="border-t border-border">{/* 预留区域 */}</div>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
-    </div>
-  );
-}
-
-/** 编辑页左侧图片轮播：左右箭头切换 */
-function CaptionImageCarousel({ urls }: { urls: string[] }) {
-  const [index, setIndex] = useState(0);
-  const prev = () => setIndex((i) => (i <= 0 ? urls.length - 1 : i - 1));
-  const next = () => setIndex((i) => (i >= urls.length - 1 ? 0 : i + 1));
-
-  if (urls.length === 0) return null;
-
-  return (
-    <div className="relative flex flex-1 items-center justify-center bg-muted/30 min-h-[360px]">
-      <Image
-        src={urls[index]}
-        alt=""
-        className="max-h-[360px] w-auto max-w-full object-contain"
-        height={50}
-        width={50}
-      />
-      {urls.length > 1 && (
-        <>
-          <button
-            type="button"
-            onClick={prev}
-            className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-black/50 p-2 text-white hover:bg-black/70"
-            aria-label="上一张"
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </button>
-          <button
-            type="button"
-            onClick={next}
-            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-black/50 p-2 text-white hover:bg-black/70 rotate-180"
-            aria-label="下一张"
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </button>
-          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
-            {urls.map((_, i) => (
-              <span
-                key={i}
-                className={cn(
-                  "h-1.5 rounded-full transition-all",
-                  i === index ? "w-4 bg-primary" : "w-1.5 bg-white/60"
-                )}
-              />
-            ))}
-          </div>
-        </>
-      )}
     </div>
   );
 }

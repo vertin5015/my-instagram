@@ -1,13 +1,12 @@
 import { create } from "zustand";
 
-export type CreatePostStep = "upload" | "caption" | "success";
+// 新增 'crop' 步骤
+export type CreatePostStep = "upload" | "crop" | "caption" | "success";
 
 interface CreatePostState {
   isOpen: boolean;
   step: CreatePostStep;
-  /** 已选图片的预览 URL，用于展示与编辑页轮播 */
   imagePreviewUrls: string[];
-  /** 原始 File 列表，用于后续上传 */
   imageFiles: File[];
   caption: string;
   open: () => void;
@@ -34,8 +33,10 @@ export const useCreatePostStore = create<CreatePostState>((set) => ({
   setImages: (files) => {
     const urls = files.map((f) => URL.createObjectURL(f));
     set((state) => {
+      // 清理旧 URL
       state.imagePreviewUrls.forEach((u) => URL.revokeObjectURL(u));
-      return { imageFiles: files, imagePreviewUrls: urls };
+      // 设置新图片并自动跳转到 'crop' 预览步骤
+      return { imageFiles: files, imagePreviewUrls: urls, step: "crop" };
     });
   },
   setCaption: (caption) => set({ caption }),
