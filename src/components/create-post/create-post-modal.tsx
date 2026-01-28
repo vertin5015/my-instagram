@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
-import { ArrowLeft, Smile } from "lucide-react";
+import { useEffect, useState, useRef, useCallback } from "react";
+import { ArrowLeft, Smile, X } from "lucide-react";
 import EmojiPicker, { Theme, EmojiClickData } from "emoji-picker-react";
 import Image from "next/image";
 
@@ -51,9 +51,26 @@ export function CreatePostModal() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // --- 统一的安全关闭/返回逻辑 ---
+
+  const handleSafeClose = useCallback(() => {
+    // 如果在 crop 或 caption 步骤，说明已有内容，需要确认
+    if (step === "crop" || step === "caption") {
+      const confirm = window.confirm(
+        "要放弃帖子吗？如果离开，所做的修改将会丢失。"
+      );
+      if (confirm) {
+        close();
+        setImages([]);
+      }
+    } else {
+      // 成功页或上传页直接关闭
+      close();
+    }
+  }, [step, close, setImages]);
+
   const handleBack = () => {
     if (step === "crop") {
-      // 返回上传页，需要确认是否丢弃（这里简单处理为直接清空）
       const confirm = window.confirm(
         "要放弃帖子吗？如果离开，所做的修改将会丢失。"
       );
@@ -66,8 +83,18 @@ export function CreatePostModal() {
     }
   };
 
+  // 监听 ESC 键
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isOpen) {
+        handleSafeClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, handleSafeClose]);
+
   const handleShare = async () => {
-    // 这里调用后端 API
     console.log("Sharing post:", { images: imagePreviewUrls, caption });
     setStep("success");
   };
@@ -80,53 +107,51 @@ export function CreatePostModal() {
 
   if (!isOpen) return null;
 
-  // 动态计算 Modal 宽度：上传和预览页较窄，填写文案页变宽
-  const modalWidthClass =
-    step === "caption"
-      ? "max-w-[850px]"
-      : "max-w-[500px] aspect-square min-h-[300px]";
+  // --- 布局计算 ---
+  // 核心优化：避免使用 aspect-square 导致的高度剧烈变化。
+  // 我们固定高度，让宽度自适应。
+  // Upload: 宽=高
+  // Crop: 宽度跟随图片比例，但受限于 max-w
+  // Caption: 宽度变宽以容纳侧边栏
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200"
-      onClick={close}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-sm p-4 md:p-8 animate-in fade-in duration-200"
+      onClick={handleSafeClose}
     >
-      {/* 关闭按钮 (右上角) */}
       <button
-        onClick={close}
-        className="absolute top-4 right-4 text-white/80 hover:text-white"
+        onClick={(e) => {
+          e.stopPropagation();
+          handleSafeClose();
+        }}
+        className="absolute top-4 right-4 z-60 text-white/80 hover:text-white transition-colors"
       >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="24"
-          height="24"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M18 6 6 18" />
-          <path d="m6 6 12 12" />
-        </svg>
+        <X className="h-8 w-8 drop-shadow-md" />
       </button>
 
+      {/* Modal 内容容器 */}
       <div
         onClick={(e) => e.stopPropagation()}
         className={cn(
           "bg-background w-full overflow-hidden rounded-xl shadow-2xl flex flex-col transition-all duration-300 ease-in-out",
-          step === "upload" || step === "crop"
-            ? "h-[50vh] md:h-[500px]"
-            : "h-[50vh] md:h-[500px]", // 保持高度一致避免抖动
-          modalWidthClass
+          // 统一高度控制：手机端高度较大，桌面端固定高度
+          "h-[60vh] md:h-[70vh] max-h-[800px] min-h-[400px]",
+
+          // 宽度控制：
+          step === "upload" && "max-w-[500px] md:aspect-square", // 上传页保持方正
+          step === "crop" && "max-w-[500px] md:w-auto md:min-w-[500px]", // 裁剪页宽度自适应
+          step === "caption" && "max-w-[900px] md:w-[900px]", // 文案页固定较宽
+          step === "success" && "max-w-[400px] h-auto min-h-[300px]" // 成功页小巧
         )}
       >
         {/* --- Header --- */}
-        <header className="flex h-[44px] shrink-0 items-center justify-between border-b px-4">
+        <header className="flex h-[44px] shrink-0 items-center justify-between border-b px-4 bg-background z-10 relative">
           <div className="w-10">
             {step !== "upload" && step !== "success" && (
-              <button onClick={handleBack} className="p-1">
+              <button
+                onClick={handleBack}
+                className="p-1 hover:opacity-70 transition-opacity"
+              >
                 <ArrowLeft className="h-6 w-6" />
               </button>
             )}
@@ -143,7 +168,7 @@ export function CreatePostModal() {
             {step === "crop" && (
               <Button
                 variant="ghost"
-                className="text-[#0095f6] hover:text-[#00376b] font-semibold hover:bg-transparent p-0"
+                className="text-[#0095f6] hover:text-[#00376b] font-semibold hover:bg-transparent p-0 text-sm"
                 onClick={() => setStep("caption")}
               >
                 下一步
@@ -152,7 +177,7 @@ export function CreatePostModal() {
             {step === "caption" && (
               <Button
                 variant="ghost"
-                className="text-[#0095f6] hover:text-[#00376b] font-semibold hover:bg-transparent p-0"
+                className="text-[#0095f6] hover:text-[#00376b] font-semibold hover:bg-transparent p-0 text-sm"
                 onClick={handleShare}
               >
                 分享
@@ -162,20 +187,12 @@ export function CreatePostModal() {
         </header>
 
         {/* --- Body --- */}
-        <div className="flex flex-1 overflow-hidden">
-          {/* 成功状态 */}
+        <div className="flex flex-1 overflow-hidden relative">
           {step === "success" ? (
-            <div className="flex w-full flex-col items-center justify-center gap-4 animate-in zoom-in-95">
+            <div className="flex w-full flex-col items-center justify-center gap-4 animate-in zoom-in-95 p-8">
+              {/* 成功页 UI 保持不变 */}
               <div className="rounded-full bg-linear-to-tr from-yellow-400 via-pink-500 to-purple-600 p-[2px]">
                 <div className="rounded-full bg-background p-4">
-                  <Image
-                    src="/check.png"
-                    alt="Success"
-                    width={60}
-                    height={60}
-                    className="hidden"
-                  />{" "}
-                  {/* 可以换成 Icon */}
                   <svg
                     className="h-12 w-12 text-transparent bg-clip-text bg-linear-to-tr from-yellow-400 via-pink-500 to-purple-600 animate-pulse"
                     fill="none"
@@ -193,38 +210,35 @@ export function CreatePostModal() {
                 </div>
               </div>
               <h2 className="text-xl font-medium">帖子已发布</h2>
-              <Button
-                variant="ghost"
-                className="text-[#0095f6]"
-                onClick={close}
-              >
+              <Button onClick={close} variant="ghost" className="text-blue-500">
                 完成
               </Button>
             </div>
           ) : (
-            <>
-              {/* 左侧：图片区域 (在 caption 步骤时只占一部分，其他时候占满) */}
+            <div className="flex w-full h-full">
+              {/* 左侧：图片区域 */}
               <div
                 className={cn(
-                  "relative transition-all duration-300 ease-in-out bg-black",
+                  "relative h-full transition-all duration-300 ease-in-out bg-black flex items-center justify-center",
+                  // 在 caption 模式下，图片宽度占 60% (md以上)，手机端隐藏或变小
                   step === "caption"
-                    ? "hidden md:block w-[60%] border-r border-border"
+                    ? "hidden md:flex md:w-[60%] border-r border-border"
                     : "w-full",
-                  step === "upload" && "bg-background" // 上传页不需要黑色背景
+                  step === "upload" && "bg-background"
                 )}
               >
                 {step === "upload" ? (
                   <CreatePostUpload onImagesSelected={setImages} />
                 ) : (
-                  <ImageCarousel urls={imagePreviewUrls} />
+                  <ImageCarousel urls={imagePreviewUrls} step={step} />
                 )}
               </div>
 
               {/* 右侧：文案填写 (仅在 caption 步骤显示) */}
               {step === "caption" && (
-                <div className="flex flex-col w-full md:w-[40%] bg-background">
+                <div className="flex flex-col w-full md:w-[40%] bg-background h-full">
                   {/* 用户信息 */}
-                  <div className="flex items-center gap-3 p-4">
+                  <div className="flex items-center gap-3 p-4 shrink-0">
                     <Avatar className="h-8 w-8">
                       <AvatarImage src={user?.image || undefined} />
                       <AvatarFallback>
@@ -243,28 +257,27 @@ export function CreatePostModal() {
                       setCaption(e.target.value.slice(0, MAX_CHAR))
                     }
                     placeholder="撰写说明..."
-                    className="flex-1 resize-none border-none p-4 text-sm outline-none leading-relaxed"
+                    className="flex-1 resize-none border-none p-4 text-sm outline-none leading-relaxed bg-transparent"
                     autoFocus
                   />
 
-                  {/* 工具栏：Emoji & 字数 */}
-                  <div className="relative flex items-center justify-between px-4 py-3 border-t md:border-t-0">
+                  {/* Emoji & 字数 */}
+                  <div className="relative flex items-center justify-between px-4 py-3 border-t md:border-t-0 shrink-0">
                     <div className="relative" ref={emojiRef}>
                       <button
                         onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                        className="text-muted-foreground hover:text-foreground transition-colors"
+                        className="text-muted-foreground hover:text-foreground transition-colors p-1"
                       >
                         <Smile className="h-6 w-6" />
                       </button>
 
-                      {/* Emoji Picker Popover */}
                       {showEmojiPicker && (
                         <div className="absolute bottom-10 left-0 z-50 shadow-xl">
                           <EmojiPicker
                             onEmojiClick={onEmojiClick}
                             width={300}
                             height={350}
-                            theme={Theme.AUTO} // 自适应暗黑模式
+                            theme={Theme.AUTO}
                             searchDisabled
                             previewConfig={{ showPreview: false }}
                           />
@@ -277,11 +290,13 @@ export function CreatePostModal() {
                     </span>
                   </div>
 
-                  {/* 可以在这里加 "添加地点" 等选项，模仿 Ins 布局 */}
-                  <div className="border-t border-border">{/* 预留区域 */}</div>
+                  {/* 可以在此添加更多选项，例如地理位置、高级设置等 */}
+                  <div className="border-t border-border p-4 text-sm text-muted-foreground">
+                    高级设置 (演示)
+                  </div>
                 </div>
               )}
-            </>
+            </div>
           )}
         </div>
       </div>
