@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { ImagePlus, Images, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import imageCompression from "browser-image-compression"; // 引入压缩库
+import imageCompression from "browser-image-compression";
 
 const MAX_IMAGES = 10;
 const ACCEPT = "image/jpeg,image/png,image/webp,image/gif";

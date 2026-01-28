@@ -2,6 +2,8 @@ import Link from "next/link";
 import { Grid3X3, Clapperboard, UserSquare2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
+import { notFound } from "next/navigation";
+import { getUserByUsername } from "@/actions/profile";
 
 type Props = {
   children: React.ReactNode;
@@ -13,6 +15,12 @@ export default async function ProfileLayout({ children, params }: Props) {
   const resolvedParams = await params;
   const username = resolvedParams.username;
 
+  const user = await getUserByUsername(username);
+
+  if (!user) {
+    notFound();
+  }
+
   return (
     <div className="flex flex-col items-center w-full pb-16">
       <div className="w-full max-w-[935px] px-0 md:px-3 lg:px-10">
@@ -23,10 +31,10 @@ export default async function ProfileLayout({ children, params }: Props) {
             <div className="rounded-full p-[3px] bg-linear-to-tr from-yellow-400 via-pink-500 to-purple-600">
               <div className="rounded-full bg-background p-[2px]">
                 <Image
-                  src={`https://i.pravatar.cc/300?u=${username}`}
+                  src={user.image || `https://i.pravatar.cc/300?u=${username}`}
                   alt={username}
-                  width={30}
-                  height={30}
+                  width={150}
+                  height={150}
                   className="h-24 w-24 sm:h-[150px] sm:w-[150px] rounded-full object-cover"
                 />
               </div>
@@ -47,19 +55,21 @@ export default async function ProfileLayout({ children, params }: Props) {
 
             <ul className="hidden sm:flex gap-10 text-base">
               <li>
-                <span className="font-semibold">1598</span> 帖子
+                <span className="font-semibold">{user._count.posts}</span> 帖子
               </li>
               <li>
-                <span className="font-semibold">61.6万</span> 粉丝
+                <span className="font-semibold">{user._count.followedBy}</span>{" "}
+                粉丝
               </li>
               <li>
-                <span className="font-semibold">76</span> 关注
+                <span className="font-semibold">{user._count.following}</span>{" "}
+                关注
               </li>
             </ul>
 
             <div className="text-sm space-y-1">
-              <div className="font-semibold">Liyuu</div>
-              <div>中国 🇨🇳 Shanghai</div>
+              <div className="font-semibold">{user.name || username}</div>
+              <div>{user.bio}</div>
             </div>
           </section>
         </header>
