@@ -3,6 +3,7 @@
 
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
+import { revalidatePath } from "next/cache";
 
 // 定义每页加载的数量
 const PAGE_SIZE = 5;
@@ -76,4 +77,64 @@ export async function getFeedPosts(cursor?: string) {
     items: formattedPosts,
     nextCursor,
   };
+}
+
+// 1. 获取单条帖子详情 (包含评论和用户信息)
+export async function getPostById(postId: string) {
+  const user = await getCurrentUser();
+  const userId = user?.id;
+
+  const post = await prisma.post.findUnique({
+    where: { id: postId },
+    include: {
+      user: {
+        select: { id: true, username: true, image: true },
+      },
+      comments: {
+        orderBy: { createdAt: "desc" }, // 评论按时间倒序
+        include: {
+          user: {
+            select: { id: true, username: true, image: true },
+          },
+        },
+      },
+      _count: {
+        select: { likes: true, comments: true },
+      },
+      // 检查当前用户是否点赞
+      likes: userId
+        ? { where: { userId: userId }, select: { userId: true } }
+        : false,
+    },
+  });
+
+  if (!post) return null;
+
+  return {
+    ...post,
+    isLiked: userId ? post.likes.length > 0 : false,
+    likesCount: post._count.likes,
+  };
+}
+
+// 2. 发布评论 Action
+export async function createComment(postId: string, body: string) {
+  const user = await getCurrentUser();
+  if (!user) throw new Error("Unauthorized");
+
+  if (!body.trim()) throw new Error("Comment cannot be empty");
+
+  const comment = await prisma.comment.create({
+    data: {
+      body,
+      postId,
+      userId: user.id,
+    },
+  });
+
+  // 重新验证路径，让UI更新
+  revalidatePath(`/post/${postId}`);
+  revalidatePath("/"); // 更新首页的评论数
+
+  return { success: true, comment };
 }

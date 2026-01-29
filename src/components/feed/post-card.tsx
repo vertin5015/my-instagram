@@ -129,7 +129,7 @@ export default function PostCard({ post }: { post: PostProps }) {
   };
 
   return (
-    <Card className="border-0 rounded-none md:rounded-lg bg-background shadow-none overflow-hidden w-full max-w-[470px] mx-auto">
+    <Card className="border-0 rounded-none md:rounded-lg gap-4 bg-background shadow-none overflow-hidden w-full max-w-[470px] mx-auto ">
       {/* Header */}
       <div className="flex items-center justify-between p-3">
         <div className="flex items-center gap-3">
@@ -163,7 +163,7 @@ export default function PostCard({ post }: { post: PostProps }) {
       </div>
 
       {/* Image Carousel Container */}
-      <div className="relative w-full aspect-square bg-muted overflow-hidden group">
+      <div className="relative w-full aspect-4/5 bg-muted overflow-hidden group rounded-sm">
         {/* 1. 滑动轨道 (Track) */}
         <div
           className="flex w-full h-full transition-transform duration-300 ease-out"
@@ -241,17 +241,19 @@ export default function PostCard({ post }: { post: PostProps }) {
           <div className="flex items-center gap-4">
             {/* Like Button & Count */}
             <div className="flex items-center gap-1.5">
-              <Button
-                variant="ghost"
-                size="icon"
+              <button
                 onClick={() => setIsLiked(!isLiked)}
+                // 修改点：添加 flex items-center justify-center，移除 button 自身的 h-6 w-6 限制
                 className={cn(
-                  "h-8 w-8 p-0 hover:bg-transparent transition-transform active:scale-90",
-                  isLiked ? "text-red-500" : "hover:text-muted-foreground"
+                  "flex items-center justify-center transition-transform active:scale-90",
+                  isLiked
+                    ? "text-red-500"
+                    : "text-foreground hover:text-muted-foreground"
                 )}
               >
-                <Heart className={cn("h-7 w-7", isLiked && "fill-current")} />
-              </Button>
+                {/* 图标大小在这里控制，例如 h-7 w-7 (28px) 会更大更清晰 */}
+                <Heart className={cn("h-6 w-6", isLiked && "fill-current")} />
+              </button>
               <span className="text-sm font-semibold min-w-[2ch]">
                 {formatNumber(isLiked ? post.likes + 1 : post.likes)}
               </span>
@@ -259,14 +261,13 @@ export default function PostCard({ post }: { post: PostProps }) {
 
             {/* Comment Button & Count */}
             <div className="flex items-center gap-1.5">
-              <Link href={`/post/${post.id}`}>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 p-0 hover:bg-transparent hover:text-muted-foreground scale-x-[-1]"
+              <Link href={`/post/${post.id}`} className="flex items-center">
+                <button
+                  // 修改点：同样添加 flex 居中，scale-x-[-1]用于水平翻转图标
+                  className="flex items-center justify-center hover:text-muted-foreground transition-colors scale-x-[-1]"
                 >
-                  <MessageCircle className="h-7 w-7" />
-                </Button>
+                  <MessageCircle className="h-6 w-6" />
+                </button>
               </Link>
               <span className="text-sm font-semibold min-w-[2ch]">
                 {formatNumber(post.commentsCount)}
@@ -274,24 +275,22 @@ export default function PostCard({ post }: { post: PostProps }) {
             </div>
 
             {/* Send Button */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 p-0 hover:bg-transparent hover:text-muted-foreground -ml-1"
+            <button
+              // 修改点：添加 flex 居中，微调 margin
+              className="flex items-center justify-center hover:text-muted-foreground transition-colors -ml-1"
             >
               <Send className="h-6 w-6" />
-            </Button>
+            </button>
           </div>
 
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 p-0 hover:bg-transparent hover:text-muted-foreground"
+          {/* Bookmark Button */}
+          <button
+            // 修改点：添加 flex 居中
+            className="flex items-center justify-center hover:text-muted-foreground transition-colors"
           >
-            <Bookmark className="h-7 w-7" />
-          </Button>
+            <Bookmark className="h-6 w-6" />
+          </button>
         </div>
-
         {/* Caption Section */}
         <div className="mb-2">
           <div className="flex flex-wrap items-baseline gap-2">
