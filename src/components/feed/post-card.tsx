@@ -180,7 +180,7 @@ export default function PostCard({ post }: { post: PostProps }) {
                 // 只有第一张图且是前几个帖子时才 priority，这里简单处理先不加或者只加给 index 0
                 priority={index === 0}
                 sizes="(max-width: 768px) 100vw, 470px"
-                unoptimized
+                unoptimized={process.env.NODE_ENV === "development"}
               />
             </div>
           ))}
