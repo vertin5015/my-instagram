@@ -103,6 +103,7 @@ const ParsedCaption = ({
 
 export default function PostCard({ post }: { post: PostProps }) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [likesCount, setLikesCount] = useState(post.likes);
   const [isExpanded, setIsExpanded] = useState(false);
   const [isLiked, setIsLiked] = useState(false); // 简单的点赞状态模拟
 
@@ -120,8 +121,15 @@ export default function PostCard({ post }: { post: PostProps }) {
     }
   };
 
+  const handleLike = () => {
+    // 这里应该调用 Server Action
+    const newStatus = !isLiked;
+    setIsLiked(newStatus);
+    setLikesCount((prev) => (newStatus ? prev + 1 : prev - 1));
+  };
+
   return (
-    <Card className="border-0 rounded-none md:rounded-lg bg-background shadow-none overflow-hidden max-w-[470px] mx-auto">
+    <Card className="border-0 rounded-none md:rounded-lg bg-background shadow-none overflow-hidden w-full max-w-[470px] mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between p-3">
         <div className="flex items-center gap-3">
@@ -155,46 +163,71 @@ export default function PostCard({ post }: { post: PostProps }) {
       </div>
 
       {/* Image Carousel Container */}
-      <div className="relative w-full aspect-square bg-muted group">
-        <Image
-          src={post.images[currentImageIndex]}
-          alt={`Post by ${post.username}`}
-          fill
-          className="object-cover transition-opacity duration-300"
-          priority={Number(post.id) < 2}
-        />
+      <div className="relative w-full aspect-square bg-muted overflow-hidden group">
+        {/* 1. 滑动轨道 (Track) */}
+        <div
+          className="flex w-full h-full transition-transform duration-300 ease-out"
+          style={{ transform: `translateX(-${currentImageIndex * 100}%)` }}
+        >
+          {post.images.map((imgUrl, index) => (
+            // 2. 每个图片容器占据 100% 宽度，且不压缩 (shrink-0)
+            <div key={index} className="w-full h-full shrink-0 relative">
+              <Image
+                src={imgUrl}
+                alt={`Post image ${index + 1}`}
+                fill
+                className="object-cover"
+                // 只有第一张图且是前几个帖子时才 priority，这里简单处理先不加或者只加给 index 0
+                priority={index === 0}
+                sizes="(max-width: 768px) 100vw, 470px"
+                unoptimized
+              />
+            </div>
+          ))}
+        </div>
 
-        {/* Left Arrow */}
-        {currentImageIndex > 0 && (
-          <button
-            onClick={handlePrevImage}
-            className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 text-white rounded-full p-1.5 hover:bg-black/70 transition-all opacity-0 group-hover:opacity-100"
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </button>
-        )}
-
-        {/* Right Arrow */}
-        {currentImageIndex < post.images.length - 1 && (
-          <button
-            onClick={handleNextImage}
-            className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 text-white rounded-full p-1.5 hover:bg-black/70 transition-all opacity-0 group-hover:opacity-100"
-          >
-            <ChevronRight className="h-5 w-5" />
-          </button>
-        )}
-
-        {/* Carousel Indicators (Dots) - 多图时显示 */}
+        {/* 左右箭头 (仅当有多图时显示) */}
         {post.images.length > 1 && (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5">
+          <>
+            {/* Left Arrow: 第一张时不显示 */}
+            <button
+              onClick={handlePrevImage}
+              className={cn(
+                "absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 text-white rounded-full p-1.5 hover:bg-black/70 transition-all z-10",
+                currentImageIndex === 0
+                  ? "hidden"
+                  : "opacity-0 group-hover:opacity-100"
+              )}
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+
+            {/* Right Arrow: 最后一张时不显示 */}
+            <button
+              onClick={handleNextImage}
+              className={cn(
+                "absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 text-white rounded-full p-1.5 hover:bg-black/70 transition-all z-10",
+                currentImageIndex === post.images.length - 1
+                  ? "hidden"
+                  : "opacity-0 group-hover:opacity-100"
+              )}
+            >
+              <ChevronRight className="h-5 w-5" />
+            </button>
+          </>
+        )}
+
+        {/* 指示器 Dots */}
+        {post.images.length > 1 && (
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
             {post.images.map((_, idx) => (
               <div
                 key={idx}
                 className={cn(
                   "h-1.5 rounded-full transition-all shadow-sm",
                   idx === currentImageIndex
-                    ? "bg-primary w-1.5"
-                    : "bg-white/60 w-1.5"
+                    ? "bg-white w-1.5 scale-125" // 当前选中稍微大一点
+                    : "bg-white/50 w-1.5"
                 )}
               />
             ))}
