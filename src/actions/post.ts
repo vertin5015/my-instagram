@@ -139,3 +139,56 @@ export async function createComment(postId: string, body: string) {
 
   return { success: true, comment };
 }
+
+export async function deletePost(postId: string) {
+  const user = await getCurrentUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const post = await prisma.post.findUnique({
+    where: { id: postId },
+    select: { userId: true },
+  });
+
+  if (!post) throw new Error("Post not found");
+  if (post.userId !== user.id) throw new Error("Unauthorized"); // 只有作者能删
+
+  try {
+    // 这里建议同时也调用 Vercel Blob 的 del() 方法删除图片文件，为了保持简洁这里只演示数据库删除
+    await prisma.post.delete({
+      where: { id: postId },
+    });
+
+    revalidatePath("/");
+    revalidatePath(`/${user.username}`);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: "Failed to delete post" };
+  }
+}
+
+// 4. 更新帖子 (修改文案)
+export async function updatePost(postId: string, caption: string) {
+  const user = await getCurrentUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const post = await prisma.post.findUnique({
+    where: { id: postId },
+    select: { userId: true },
+  });
+
+  if (!post) throw new Error("Post not found");
+  if (post.userId !== user.id) throw new Error("Unauthorized");
+
+  try {
+    await prisma.post.update({
+      where: { id: postId },
+      data: { caption },
+    });
+
+    revalidatePath(`/post/${postId}`);
+    revalidatePath("/");
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: "Failed to update post" };
+  }
+}

@@ -22,6 +22,7 @@ import { createComment } from "@/actions/post"; // 引入 Action
 import { toast } from "sonner"; // 建议安装 sonner 用于提示
 import { toggleFollow, toggleLike } from "@/actions/user";
 import { useAuthStore } from "@/store/auth-store";
+import { PostOptions } from "./post-options";
 
 // 定义数据类型 (根据 Action 返回值)
 type PostDetail = {
@@ -188,7 +189,12 @@ export default function PostView({ post }: { post: PostDetail }) {
               </>
             )}
           </div>
-          <MoreHorizontal className="h-5 w-5 cursor-pointer" />
+          <PostOptions
+            postId={post.id}
+            userId={post.userId}
+            caption={post.caption || ""}
+            isOwner={isSelf}
+          />
         </div>
 
         {/* 2. Scrollable Body: Caption + Comments */}
