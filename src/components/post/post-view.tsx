@@ -20,6 +20,8 @@ import {
 import { cn } from "@/lib/utils";
 import { createComment } from "@/actions/post"; // 引入 Action
 import { toast } from "sonner"; // 建议安装 sonner 用于提示
+import { toggleFollow } from "@/actions/user";
+import { useAuthStore } from "@/store/auth-store";
 
 // 定义数据类型 (根据 Action 返回值)
 type PostDetail = {
@@ -36,12 +38,17 @@ type PostDetail = {
   }>;
   isLiked: boolean;
   likesCount: number;
+  userId: string; // 必须添加
+  isFollowing?: boolean; // 必须添加
 };
 
 export default function PostView({ post }: { post: PostDetail }) {
+  const { user: currentUser } = useAuthStore();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [commentBody, setCommentBody] = useState("");
   const [isPending, startTransition] = useTransition();
+  const [isFollowing, setIsFollowing] = useState(post.isFollowing || false);
+  const [isFollowPending, startFollowTransition] = useTransition();
 
   // 图片切换逻辑
   const handlePrev = () => setCurrentImageIndex((p) => Math.max(0, p - 1));
@@ -63,6 +70,23 @@ export default function PostView({ post }: { post: PostDetail }) {
       }
     });
   };
+
+  const handleFollow = () => {
+    if (!currentUser) return toast.error("请先登录");
+
+    const prev = isFollowing;
+    setIsFollowing(!prev);
+
+    startFollowTransition(async () => {
+      const res = await toggleFollow(post.userId);
+      if (!res.success) {
+        setIsFollowing(prev);
+        toast.error("操作失败");
+      }
+    });
+  };
+
+  const isSelf = currentUser?.id === post.userId;
 
   return (
     <div className="flex flex-col md:flex-row h-full max-h-[90vh] w-full max-w-[1200px] bg-background md:rounded-r-lg overflow-hidden">
@@ -113,6 +137,24 @@ export default function PostView({ post }: { post: PostDetail }) {
             <span className="font-bold text-sm hover:opacity-80 cursor-pointer">
               {post.user.username}
             </span>
+            <span className="text-muted-foreground text-[10px]">•</span>
+            {!isSelf && (
+              <>
+                <span className="text-muted-foreground text-[10px]">•</span>
+                <button
+                  onClick={handleFollow}
+                  disabled={isFollowPending}
+                  className={cn(
+                    "font-semibold text-xs transition-colors",
+                    isFollowing
+                      ? "text-muted-foreground hover:text-foreground" // 这里的样式可以根据需求调整
+                      : "text-blue-500 hover:text-blue-700"
+                  )}
+                >
+                  {isFollowing ? "已关注" : "关注"}
+                </button>
+              </>
+            )}
           </div>
           <MoreHorizontal className="h-5 w-5 cursor-pointer" />
         </div>

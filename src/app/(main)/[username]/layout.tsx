@@ -4,6 +4,9 @@ import { cn } from "@/lib/utils";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { getUserByUsername } from "@/actions/profile";
+import { getCurrentUser } from "@/lib/auth"; // 引入获取当前用户的方法
+import { prisma } from "@/lib/db"; // 引入 prisma 直接查询
+import { FollowButton } from "@/components/post/follow-button";
 
 type Props = {
   children: React.ReactNode;
@@ -11,14 +14,38 @@ type Props = {
 };
 
 export default async function ProfileLayout({ children, params }: Props) {
-  // 3. 等待 params 解析
   const resolvedParams = await params;
   const username = resolvedParams.username;
 
-  const user = await getUserByUsername(username);
+  // 并行获取目标用户信息和当前登录用户
+  const [user, currentUser] = await Promise.all([
+    getUserByUsername(username),
+    getCurrentUser(),
+  ]);
 
   if (!user) {
     notFound();
+  }
+
+  // 计算关注状态
+  let isFollowing = false;
+  let isCurrentUser = false;
+
+  if (currentUser) {
+    isCurrentUser = currentUser.id === user.id;
+
+    // 如果不是自己，检查数据库是否已关注
+    if (!isCurrentUser) {
+      const followRecord = await prisma.follows.findUnique({
+        where: {
+          followerId_followingId: {
+            followerId: currentUser.id,
+            followingId: user.id,
+          },
+        },
+      });
+      isFollowing = !!followRecord;
+    }
   }
 
   return (
@@ -45,12 +72,20 @@ export default async function ProfileLayout({ children, params }: Props) {
           <section className="flex flex-col gap-4 sm:gap-5 flex-1 min-w-0">
             <div className="flex items-center gap-4">
               <h2 className="text-xl font-normal truncate">{username}</h2>
-              <button className="h-8 px-4 text-sm font-semibold bg-neutral-200 dark:bg-neutral-800 rounded">
-                已关注
-              </button>
-              <button className="h-8 px-4 text-sm font-semibold bg-neutral-200 dark:bg-neutral-800 rounded">
-                发消息
-              </button>
+              <div className="flex gap-2">
+                <FollowButton
+                  targetUserId={user.id}
+                  initialIsFollowing={isFollowing}
+                  isCurrentUser={isCurrentUser}
+                />
+
+                {/* 可选：如果是自己，不显示发消息；如果是别人，显示发消息 */}
+                {!isCurrentUser && (
+                  <button className="h-8 px-4 text-sm font-semibold bg-neutral-200 dark:bg-neutral-800 rounded hover:bg-neutral-300 transition-colors">
+                    发消息
+                  </button>
+                )}
+              </div>
             </div>
 
             <ul className="hidden sm:flex gap-10 text-base">

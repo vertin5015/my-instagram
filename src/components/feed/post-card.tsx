@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -18,10 +18,14 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { cn } from "@/lib/utils"; // 假设你有 shadcn 的 cn 工具
+import { toggleFollow } from "@/actions/user"; // 引入 action
+import { useAuthStore } from "@/store/auth-store"; // 引入 store 用来判断是否是自己
+import { toast } from "sonner";
 
 // 模拟数据接口
 interface PostProps {
   id: string;
+  userId: string; // 新增：用于关注/取关的目标用户 ID
   username: string;
   images: string[]; // 改为字符串数组以支持多图
   caption: string;
@@ -102,11 +106,17 @@ const ParsedCaption = ({
 };
 
 export default function PostCard({ post }: { post: PostProps }) {
+  const { user: currentUser } = useAuthStore();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [likesCount, setLikesCount] = useState(post.likes);
   const [isExpanded, setIsExpanded] = useState(false);
-  const [isLiked, setIsLiked] = useState(false); // 简单的点赞状态模拟
+  const [isLiked, setIsLiked] = useState(false);
 
+  // --- 新增：关注状态 ---
+  const [isFollowing, setIsFollowing] = useState(post.isFollowing || false);
+  const [isPending, startTransition] = useTransition();
+
+  // ... 图片切换逻辑保持不变 ...
   const handlePrevImage = (e: React.MouseEvent) => {
     e.preventDefault();
     if (currentImageIndex > 0) {
@@ -121,12 +131,28 @@ export default function PostCard({ post }: { post: PostProps }) {
     }
   };
 
-  const handleLike = () => {
-    // 这里应该调用 Server Action
-    const newStatus = !isLiked;
-    setIsLiked(newStatus);
-    setLikesCount((prev) => (newStatus ? prev + 1 : prev - 1));
+  // --- 新增：关注处理函数 ---
+  const handleFollow = async () => {
+    // 如果没有登录，跳转去登录（这里简单处理，实际可用 router.push）
+    if (!currentUser) return toast.error("请先登录");
+
+    // 乐观更新
+    const prevStatus = isFollowing;
+    setIsFollowing(!prevStatus);
+
+    // React 的 startTransition 期望的是一个同步函数，这里用 Promise.then 处理异步结果
+    startTransition(() => {
+      toggleFollow(post.userId).then((res) => {
+        if (!res.success) {
+          setIsFollowing(prevStatus); // 回滚
+          toast.error("关注失败");
+        }
+      });
+    });
   };
+
+  // 辅助判断：不能关注自己
+  const isSelf = currentUser?.username === post.username;
 
   return (
     <Card className="border-0 rounded-none md:rounded-lg gap-4 bg-background shadow-none overflow-hidden w-full max-w-[470px] mx-auto ">
@@ -146,9 +172,20 @@ export default function PostCard({ post }: { post: PostProps }) {
                 {post.username}
               </Link>
               <span className="text-muted-foreground text-[10px]">•</span>
-              <button className="text-blue-500 font-semibold text-xs hover:text-blue-700 transition-colors">
-                关注
-              </button>
+              {!isSelf && (
+                <button
+                  disabled={isPending}
+                  onClick={handleFollow}
+                  className={cn(
+                    "font-semibold text-xs transition-colors",
+                    isFollowing
+                      ? "text-muted-foreground hover:text-foreground"
+                      : "text-blue-500 hover:text-blue-700"
+                  )}
+                >
+                  {isFollowing ? "已关注" : "关注"}
+                </button>
+              )}
             </div>
             {/* 可选：显示地点或原创音频信息 */}
           </div>
