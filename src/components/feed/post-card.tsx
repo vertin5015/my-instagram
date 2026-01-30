@@ -192,10 +192,14 @@ export default function PostCard({ post }: { post: PostProps }) {
       {/* Header */}
       <div className="flex items-center justify-between p-3">
         <div className="flex items-center gap-3">
-          <Avatar className="h-8 w-8 cursor-pointer ring-2 ring-transparent hover:ring-primary/20 transition">
-            <AvatarImage src={`https://i.pravatar.cc/150?u=${post.username}`} />
-            <AvatarFallback>{post.username[0].toUpperCase()}</AvatarFallback>
-          </Avatar>
+          <Link href={`/${post.username}`}>
+            <Avatar className="h-8 w-8 cursor-pointer ring-2 ring-transparent hover:ring-primary/20 transition">
+              <AvatarImage
+                src={`https://i.pravatar.cc/150?u=${post.username}`}
+              />
+              <AvatarFallback>{post.username[0].toUpperCase()}</AvatarFallback>
+            </Avatar>
+          </Link>
           <div className="flex flex-col text-sm leading-none gap-0.5">
             <div className="flex items-center gap-2">
               <Link

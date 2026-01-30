@@ -7,6 +7,7 @@ import { getUserByUsername } from "@/actions/profile";
 import { getCurrentUser } from "@/lib/auth"; // 引入获取当前用户的方法
 import { prisma } from "@/lib/db"; // 引入 prisma 直接查询
 import { FollowButton } from "@/components/post/follow-button";
+import { ProfileAvatar } from "@/components/user/profile-avatar";
 
 type Props = {
   children: React.ReactNode;
@@ -55,17 +56,10 @@ export default async function ProfileLayout({ children, params }: Props) {
         <header className="flex flex-col sm:flex-row gap-8 sm:gap-16 py-8">
           {/* Avatar */}
           <div className="flex justify-center sm:justify-start shrink-0 sm:ml-4 md:ml-10">
-            <div className="rounded-full p-[3px] bg-linear-to-tr from-yellow-400 via-pink-500 to-purple-600">
-              <div className="rounded-full bg-background p-[2px]">
-                <Image
-                  src={user.image || `https://i.pravatar.cc/300?u=${username}`}
-                  alt={username}
-                  width={150}
-                  height={150}
-                  className="h-24 w-24 sm:h-[150px] sm:w-[150px] rounded-full object-cover"
-                />
-              </div>
-            </div>
+            <ProfileAvatar
+              user={{ username: user.username, image: user.image }}
+              isCurrentUser={isCurrentUser}
+            />
           </div>
 
           {/* Info */}
@@ -111,7 +105,7 @@ export default async function ProfileLayout({ children, params }: Props) {
 
         {/* ===== Tabs ===== */}
         <div>
-          <div className="flex justify-center gap-12 md:gap-28 text-xs font-semibold tracking-widest uppercase">
+          <div className="flex justify-center gap-12 md:gap-28 text-xs font-semibold tracking-widest uppercase border-b">
             <TabLink href={`/${username}`} icon={Grid3X3}></TabLink>
             <TabLink href={`/${username}/reels`} icon={Clapperboard}></TabLink>
             <TabLink href={`/${username}/tagged`} icon={UserSquare2}></TabLink>

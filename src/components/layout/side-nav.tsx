@@ -11,13 +11,20 @@ import {
   Instagram,
   Menu,
   User,
+  LogOut,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useAuthStore } from "@/store/auth-store";
 import { useCreatePostStore } from "@/store/create-post-store";
 
 export default function SideNav() {
-  const { user } = useAuthStore();
+  const { user, logout } = useAuthStore();
   const openCreatePost = useCreatePostStore((s) => s.open);
 
   const navItems = [
@@ -82,13 +89,28 @@ export default function SideNav() {
 
       {/* 底部 More 菜单 */}
       <div>
-        <Button
-          variant="ghost"
-          className="w-full flex justify-start gap-4 p-3 hover:bg-accent rounded-lg lg:px-3"
-        >
-          <Menu className="h-7 w-7 shrink-0" />
-          <span className="hidden lg:block text-base font-medium">More</span>
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              className="w-full flex justify-start gap-4 p-3 hover:bg-accent rounded-lg lg:px-3"
+            >
+              <Menu className="h-7 w-7 shrink-0" />
+              <span className="hidden lg:block text-base font-medium">
+                More
+              </span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-56" align="end" side="top">
+            <DropdownMenuItem
+              onClick={() => logout()}
+              className="cursor-pointer text-destructive focus:text-destructive"
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              <span>退出登陆</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
   );

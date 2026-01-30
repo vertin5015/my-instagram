@@ -62,6 +62,7 @@ export async function getFeedPosts(cursor?: string) {
   // 数据格式化
   const formattedPosts = posts.map((post) => ({
     id: post.id,
+    userId: post.user.id,
     username: post.user.username ?? "Unknown",
     userImage: post.user.image ?? undefined,
     caption: post.caption ?? "",

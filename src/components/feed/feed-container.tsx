@@ -12,6 +12,7 @@ import { toast } from "sonner"; // 或者使用 console.error
 // 定义接口
 interface FeedPost {
   id: string;
+  userId: string; // 新增：用于点赞/关注等需要 userId 的地方
   username: string;
   userImage?: string;
   caption: string;
