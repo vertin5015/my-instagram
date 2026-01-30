@@ -1,3 +1,4 @@
+// app/@modal/(.)post/[id]/page.tsx (或者你的拦截路由路径)
 import { getPostById } from "@/actions/post";
 import PostView from "@/components/post/post-view";
 import { ModalWrapper } from "@/components/post/modal-wrapper";
@@ -17,7 +18,10 @@ export default async function PostModalPage({
 
   return (
     <ModalWrapper>
-      <PostView post={post} />
+      {/* 修复关键：添加这个 div 来强制撑开高度和宽度，就像 PostPage 一样 */}
+      <div className="flex w-full h-[80vh] md:h-[600px] lg:h-[700px] overflow-hidden bg-background md:rounded-lg">
+        <PostView post={post} />
+      </div>
     </ModalWrapper>
   );
 }

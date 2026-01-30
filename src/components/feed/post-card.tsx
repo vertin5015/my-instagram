@@ -294,7 +294,9 @@ export default function PostCard({ post }: { post: PostProps }) {
         {/* Caption Section */}
         <div className="mb-2">
           <div className="flex flex-wrap items-baseline gap-2">
-            <span className="font-bold text-sm">{post.username}</span>
+            <Link href={`/${post.username}`} className="font-bold text-sm">
+              {post.username}
+            </Link>
             <ParsedCaption
               text={post.caption}
               isExpanded={isExpanded}
