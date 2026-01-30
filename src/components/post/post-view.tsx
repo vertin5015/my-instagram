@@ -20,7 +20,7 @@ import {
 import { cn } from "@/lib/utils";
 import { createComment } from "@/actions/post"; // 引入 Action
 import { toast } from "sonner"; // 建议安装 sonner 用于提示
-import { toggleFollow } from "@/actions/user";
+import { toggleFollow, toggleLike } from "@/actions/user";
 import { useAuthStore } from "@/store/auth-store";
 
 // 定义数据类型 (根据 Action 返回值)
@@ -49,6 +49,11 @@ export default function PostView({ post }: { post: PostDetail }) {
   const [isPending, startTransition] = useTransition();
   const [isFollowing, setIsFollowing] = useState(post.isFollowing || false);
   const [isFollowPending, startFollowTransition] = useTransition();
+  const [isLiked, setIsLiked] = useState(post.isLiked);
+  const [likesCount, setLikesCount] = useState(post.likesCount);
+
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [isLikePending, startLikeTransition] = useTransition();
 
   // 图片切换逻辑
   const handlePrev = () => setCurrentImageIndex((p) => Math.max(0, p - 1));
@@ -81,6 +86,33 @@ export default function PostView({ post }: { post: PostDetail }) {
       const res = await toggleFollow(post.userId);
       if (!res.success) {
         setIsFollowing(prev);
+        toast.error("操作失败");
+      }
+    });
+  };
+
+  const handleLike = () => {
+    if (!currentUser) return toast.error("请先登录");
+
+    const prevIsLiked = isLiked;
+    const prevCount = likesCount;
+
+    // 乐观更新
+    setIsLiked(!prevIsLiked);
+    setLikesCount(prevIsLiked ? prevCount - 1 : prevCount + 1);
+
+    // 动画
+    if (!prevIsLiked) {
+      setIsAnimating(true);
+      setTimeout(() => setIsAnimating(false), 300);
+    }
+
+    startLikeTransition(async () => {
+      const res = await toggleLike(post.id);
+      if (!res.success) {
+        // 回滚
+        setIsLiked(prevIsLiked);
+        setLikesCount(prevCount);
         toast.error("操作失败");
       }
     });
@@ -207,18 +239,26 @@ export default function PostView({ post }: { post: PostDetail }) {
           <div className="flex justify-between mb-2">
             <div className="flex gap-4">
               {/* 这里的点赞逻辑可以复用 PostCard 的逻辑 */}
-              <Heart
-                className={cn(
-                  "h-6 w-6 cursor-pointer",
-                  post.isLiked ? "fill-red-500 text-red-500" : ""
-                )}
-              />
+              <button
+                onClick={handleLike}
+                className="flex items-center justify-center active:scale-90 transition-transform outline-none"
+              >
+                <Heart
+                  className={cn(
+                    "h-6 w-6 cursor-pointer transition-colors duration-300",
+                    isLiked
+                      ? "fill-red-500 text-red-500"
+                      : "hover:text-muted-foreground",
+                    isAnimating && "animate-bounce-custom"
+                  )}
+                />
+              </button>
               <MessageCircle className="h-6 w-6 cursor-pointer scale-x-[-1]" />
               <Send className="h-6 w-6 cursor-pointer" />
             </div>
             <Bookmark className="h-6 w-6 cursor-pointer" />
           </div>
-          <div className="font-bold text-sm mb-2">{post.likesCount} 次点赞</div>
+          <div className="font-bold text-sm mb-2">{likesCount} 次点赞</div>
           <div className="text-[10px] text-muted-foreground uppercase mb-3">
             {new Date(post.createdAt).toLocaleString()}
           </div>

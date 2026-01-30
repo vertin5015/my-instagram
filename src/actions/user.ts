@@ -69,3 +69,55 @@ export async function toggleFollow(targetUserId: string) {
     return { success: false, error: "Failed to update follow status" };
   }
 }
+
+export async function toggleLike(postId: string) {
+  const user = await getCurrentUser();
+
+  if (!user) {
+    throw new Error("Unauthorized");
+  }
+
+  try {
+    const userId = user.id;
+
+    // 1. 检查是否存在点赞记录
+    const existingLike = await prisma.like.findUnique({
+      where: {
+        userId_postId: {
+          userId,
+          postId,
+        },
+      },
+    });
+
+    if (existingLike) {
+      // 2. 如果已赞，则删除 (取消点赞)
+      await prisma.like.delete({
+        where: {
+          userId_postId: {
+            userId,
+            postId,
+          },
+        },
+      });
+    } else {
+      // 3. 如果未赞，则创建 (点赞)
+      await prisma.like.create({
+        data: {
+          userId,
+          postId,
+        },
+      });
+      // 这里可以添加 Notification 通知逻辑
+    }
+
+    // 4. 重新验证相关路径缓存
+    revalidatePath("/");
+    revalidatePath(`/post/${postId}`);
+
+    return { success: true };
+  } catch (error) {
+    console.error("Toggle like error:", error);
+    return { success: false, error: "Failed to toggle like" };
+  }
+}

@@ -18,7 +18,7 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { cn } from "@/lib/utils"; // 假设你有 shadcn 的 cn 工具
-import { toggleFollow } from "@/actions/user"; // 引入 action
+import { toggleFollow, toggleLike } from "@/actions/user"; // 引入 action
 import { useAuthStore } from "@/store/auth-store"; // 引入 store 用来判断是否是自己
 import { toast } from "sonner";
 
@@ -30,6 +30,7 @@ interface PostProps {
   images: string[]; // 改为字符串数组以支持多图
   caption: string;
   likes: number;
+  isLiked: boolean;
   commentsCount: number; // 新增评论数
   timestamp: string;
   isFollowing?: boolean; // 新增关注状态
@@ -108,13 +109,14 @@ const ParsedCaption = ({
 export default function PostCard({ post }: { post: PostProps }) {
   const { user: currentUser } = useAuthStore();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isLiked, setIsLiked] = useState(post.isLiked || false);
   const [likesCount, setLikesCount] = useState(post.likes);
   const [isExpanded, setIsExpanded] = useState(false);
-  const [isLiked, setIsLiked] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [isPending, startTransition] = useTransition();
 
   // --- 新增：关注状态 ---
   const [isFollowing, setIsFollowing] = useState(post.isFollowing || false);
-  const [isPending, startTransition] = useTransition();
 
   // ... 图片切换逻辑保持不变 ...
   const handlePrevImage = (e: React.MouseEvent) => {
@@ -148,6 +150,37 @@ export default function PostCard({ post }: { post: PostProps }) {
           toast.error("关注失败");
         }
       });
+    });
+  };
+
+  const handleLike = async () => {
+    if (!currentUser) {
+      return toast.error("请先登录");
+    }
+
+    // 记录旧状态，用于失败回滚
+    const prevIsLiked = isLiked;
+    const prevLikesCount = likesCount;
+
+    // A. 乐观更新 UI：立即改变状态和数字
+    setIsLiked(!prevIsLiked);
+    setLikesCount(prevIsLiked ? prevLikesCount - 1 : prevLikesCount + 1);
+
+    // 触发动画
+    if (!prevIsLiked) {
+      setIsAnimating(true);
+      setTimeout(() => setIsAnimating(false), 300); // 300ms 后重置动画状态
+    }
+
+    // B. 发送后台请求
+    startTransition(async () => {
+      const res = await toggleLike(post.id);
+      if (!res.success) {
+        // C. 如果失败，回滚状态
+        setIsLiked(prevIsLiked);
+        setLikesCount(prevLikesCount);
+        toast.error("操作失败，请重试");
+      }
     });
   };
 
@@ -279,20 +312,23 @@ export default function PostCard({ post }: { post: PostProps }) {
             {/* Like Button & Count */}
             <div className="flex items-center gap-1.5">
               <button
-                onClick={() => setIsLiked(!isLiked)}
-                // 修改点：添加 flex items-center justify-center，移除 button 自身的 h-6 w-6 限制
-                className={cn(
-                  "flex items-center justify-center transition-transform active:scale-90",
-                  isLiked
-                    ? "text-red-500"
-                    : "text-foreground hover:text-muted-foreground"
-                )}
+                onClick={handleLike}
+                disabled={isPending} // 防止极其快速的连点，或者不禁用也可以，看需求
+                className="flex items-center justify-center transition-transform active:scale-90 outline-none"
               >
-                {/* 图标大小在这里控制，例如 h-7 w-7 (28px) 会更大更清晰 */}
-                <Heart className={cn("h-6 w-6", isLiked && "fill-current")} />
+                <Heart
+                  className={cn(
+                    "h-6 w-6 transition-colors duration-300",
+                    isLiked
+                      ? "fill-red-500 text-red-500"
+                      : "text-foreground hover:text-muted-foreground",
+                    // 添加 CSS 动画类
+                    isAnimating && "animate-bounce-custom"
+                  )}
+                />
               </button>
               <span className="text-sm font-semibold min-w-[2ch]">
-                {formatNumber(isLiked ? post.likes + 1 : post.likes)}
+                {formatNumber(likesCount)}
               </span>
             </div>
 

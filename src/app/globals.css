@@ -136,3 +136,31 @@
     @apply bg-background text-foreground;
   }
 }
+
+@layer utilities {
+  /* 自定义心跳动画 */
+  @keyframes like-bounce {
+    0% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.25);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+
+  .animate-bounce-custom {
+    animation: like-bounce 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+
+  /* 隐藏滚动条但保留滚动功能 (用于 PostView 评论区) */
+  .scrollbar-hide {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
