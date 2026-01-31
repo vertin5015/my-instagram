@@ -5,10 +5,8 @@ import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 
-// 定义每页加载的数量
 const PAGE_SIZE = 5;
 
-// 接收 cursor 参数
 export async function getFeedPosts(cursor?: string) {
   const user = await getCurrentUser();
   const userId = user?.id;
@@ -22,12 +20,11 @@ export async function getFeedPosts(cursor?: string) {
     followingIds = new Set(following.map((f) => f.followingId));
   }
 
-  // 查询逻辑修改
   const posts = await prisma.post.findMany({
     orderBy: { createdAt: "desc" },
-    take: PAGE_SIZE + 1, // 多取一条，用于判断是否还有下一页
-    cursor: cursor ? { id: cursor } : undefined, // 如果有 cursor，从该 ID 开始
-    skip: cursor ? 1 : 0, // 如果有 cursor，跳过游标本身
+    take: PAGE_SIZE + 1,
+    cursor: cursor ? { id: cursor } : undefined,
+    skip: cursor ? 1 : 0,
     include: {
       user: {
         select: {
@@ -52,11 +49,10 @@ export async function getFeedPosts(cursor?: string) {
     },
   });
 
-  // 判断是否有下一页
   let nextCursor: string | undefined = undefined;
   if (posts.length > PAGE_SIZE) {
-    const nextItem = posts.pop(); // 移除多取的那一条
-    nextCursor = nextItem?.id; // 将该条 ID 作为下一次请求的游标
+    const nextItem = posts.pop();
+    nextCursor = nextItem?.id;
   }
 
   // 数据格式化
@@ -80,7 +76,6 @@ export async function getFeedPosts(cursor?: string) {
   };
 }
 
-// 1. 获取单条帖子详情 (包含评论和用户信息)
 export async function getPostById(postId: string) {
   const user = await getCurrentUser();
   const userId = user?.id;
@@ -92,7 +87,7 @@ export async function getPostById(postId: string) {
         select: { id: true, username: true, image: true },
       },
       comments: {
-        orderBy: { createdAt: "desc" }, // 评论按时间倒序
+        orderBy: { createdAt: "desc" },
         include: {
           user: {
             select: { id: true, username: true, image: true },
@@ -102,7 +97,6 @@ export async function getPostById(postId: string) {
       _count: {
         select: { likes: true, comments: true },
       },
-      // 检查当前用户是否点赞
       likes: userId
         ? { where: { userId: userId }, select: { userId: true } }
         : false,
@@ -118,7 +112,6 @@ export async function getPostById(postId: string) {
   };
 }
 
-// 2. 发布评论 Action
 export async function createComment(postId: string, body: string) {
   const user = await getCurrentUser();
   if (!user) throw new Error("Unauthorized");
@@ -133,9 +126,8 @@ export async function createComment(postId: string, body: string) {
     },
   });
 
-  // 重新验证路径，让UI更新
   revalidatePath(`/post/${postId}`);
-  revalidatePath("/"); // 更新首页的评论数
+  revalidatePath("/");
 
   return { success: true, comment };
 }
@@ -150,10 +142,9 @@ export async function deletePost(postId: string) {
   });
 
   if (!post) throw new Error("Post not found");
-  if (post.userId !== user.id) throw new Error("Unauthorized"); // 只有作者能删
+  if (post.userId !== user.id) throw new Error("Unauthorized");
 
   try {
-    // 这里建议同时也调用 Vercel Blob 的 del() 方法删除图片文件，为了保持简洁这里只演示数据库删除
     await prisma.post.delete({
       where: { id: postId },
     });
@@ -166,7 +157,6 @@ export async function deletePost(postId: string) {
   }
 }
 
-// 4. 更新帖子 (修改文案)
 export async function updatePost(postId: string, caption: string) {
   const user = await getCurrentUser();
   if (!user) throw new Error("Unauthorized");

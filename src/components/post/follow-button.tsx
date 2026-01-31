@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 interface FollowButtonProps {
   targetUserId: string;
   initialIsFollowing: boolean;
-  isCurrentUser: boolean; // 如果是自己，显示编辑资料而不是关注
+  isCurrentUser: boolean;
   className?: string;
 }
 
@@ -23,14 +23,12 @@ export function FollowButton({
   const [isPending, startTransition] = useTransition();
 
   const handleFollow = () => {
-    // 乐观 UI 更新：先切换状态
     const prev = isFollowing;
     setIsFollowing(!prev);
 
     startTransition(async () => {
       const res = await toggleFollow(targetUserId);
       if (!res.success) {
-        // 失败回滚
         setIsFollowing(prev);
         toast.error("操作失败，请重试");
       }

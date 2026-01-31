@@ -5,26 +5,22 @@ import { useState, useTransition } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import {
   Heart,
   MessageCircle,
   Send,
   Bookmark,
-  MoreHorizontal,
   ChevronLeft,
   ChevronRight,
   Loader2,
 } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { createComment } from "@/actions/post"; // 引入 Action
-import { toast } from "sonner"; // 建议安装 sonner 用于提示
+import { createComment } from "@/actions/post";
 import { toggleFollow, toggleLike } from "@/actions/user";
 import { useAuthStore } from "@/store/auth-store";
-import { PostOptions } from "./post-options";
+import { PostOptions } from "@/components/post/post-options";
 
-// 定义数据类型 (根据 Action 返回值)
 type PostDetail = {
   id: string;
   images: string[];
@@ -39,8 +35,8 @@ type PostDetail = {
   }>;
   isLiked: boolean;
   likesCount: number;
-  userId: string; // 必须添加
-  isFollowing?: boolean; // 必须添加
+  userId: string;
+  isFollowing?: boolean;
 };
 
 export default function PostView({ post }: { post: PostDetail }) {
@@ -56,12 +52,10 @@ export default function PostView({ post }: { post: PostDetail }) {
   const [isAnimating, setIsAnimating] = useState(false);
   const [isLikePending, startLikeTransition] = useTransition();
 
-  // 图片切换逻辑
   const handlePrev = () => setCurrentImageIndex((p) => Math.max(0, p - 1));
   const handleNext = () =>
     setCurrentImageIndex((p) => Math.min(post.images.length - 1, p + 1));
 
-  // 提交评论
   const handleCommentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!commentBody.trim()) return;
@@ -98,11 +92,9 @@ export default function PostView({ post }: { post: PostDetail }) {
     const prevIsLiked = isLiked;
     const prevCount = likesCount;
 
-    // 乐观更新
     setIsLiked(!prevIsLiked);
     setLikesCount(prevIsLiked ? prevCount - 1 : prevCount + 1);
 
-    // 动画
     if (!prevIsLiked) {
       setIsAnimating(true);
       setTimeout(() => setIsAnimating(false), 300);
@@ -111,7 +103,6 @@ export default function PostView({ post }: { post: PostDetail }) {
     startLikeTransition(async () => {
       const res = await toggleLike(post.id);
       if (!res.success) {
-        // 回滚
         setIsLiked(prevIsLiked);
         setLikesCount(prevCount);
         toast.error("操作失败");
@@ -180,7 +171,7 @@ export default function PostView({ post }: { post: PostDetail }) {
                   className={cn(
                     "font-semibold text-xs transition-colors",
                     isFollowing
-                      ? "text-muted-foreground hover:text-foreground" // 这里的样式可以根据需求调整
+                      ? "text-muted-foreground hover:text-foreground"
                       : "text-blue-500 hover:text-blue-700"
                   )}
                 >
@@ -197,7 +188,6 @@ export default function PostView({ post }: { post: PostDetail }) {
           />
         </div>
 
-        {/* 2. Scrollable Body: Caption + Comments */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-hide">
           {/* Caption */}
           {post.caption && (

@@ -15,28 +15,27 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import { toast } from "sonner";
 import Image from "next/image";
 import Link from "next/link";
-import { cn } from "@/lib/utils"; // 假设你有 shadcn 的 cn 工具
-import { toggleFollow, toggleLike } from "@/actions/user"; // 引入 action
-import { useAuthStore } from "@/store/auth-store"; // 引入 store 用来判断是否是自己
-import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+import { toggleFollow, toggleLike } from "@/actions/user";
+import { useAuthStore } from "@/store/auth-store";
 
-// 模拟数据接口
 interface PostProps {
   id: string;
-  userId: string; // 新增：用于关注/取关的目标用户 ID
+  userId: string;
   username: string;
-  images: string[]; // 改为字符串数组以支持多图
+  userImage?: string;
+  images: string[];
   caption: string;
   likes: number;
   isLiked: boolean;
-  commentsCount: number; // 新增评论数
+  commentsCount: number;
   timestamp: string;
-  isFollowing?: boolean; // 新增关注状态
+  isFollowing?: boolean;
 }
 
-// 工具函数：中文数字格式化
 const formatNumber = (num: number) => {
   if (num >= 10000) {
     return (num / 10000).toFixed(1).replace(/\.0$/, "") + "万";
@@ -54,8 +53,6 @@ const ParsedCaption = ({
   isExpanded: boolean;
   setIsExpanded: (v: boolean) => void;
 }) => {
-  // 正则匹配 #tag 或 @user
-  // 捕获组: (#[^\s#]+) 匹配tag, (@[^\s@]+) 匹配at
   const regex = /((?:#|@)[^\s#@]+)/g;
   const parts = text.split(regex);
 
@@ -114,11 +111,8 @@ export default function PostCard({ post }: { post: PostProps }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
   const [isPending, startTransition] = useTransition();
-
-  // --- 新增：关注状态 ---
   const [isFollowing, setIsFollowing] = useState(post.isFollowing || false);
 
-  // ... 图片切换逻辑保持不变 ...
   const handlePrevImage = (e: React.MouseEvent) => {
     e.preventDefault();
     if (currentImageIndex > 0) {
@@ -133,20 +127,16 @@ export default function PostCard({ post }: { post: PostProps }) {
     }
   };
 
-  // --- 新增：关注处理函数 ---
   const handleFollow = async () => {
-    // 如果没有登录，跳转去登录（这里简单处理，实际可用 router.push）
     if (!currentUser) return toast.error("请先登录");
 
-    // 乐观更新
     const prevStatus = isFollowing;
     setIsFollowing(!prevStatus);
 
-    // React 的 startTransition 期望的是一个同步函数，这里用 Promise.then 处理异步结果
     startTransition(() => {
       toggleFollow(post.userId).then((res) => {
         if (!res.success) {
-          setIsFollowing(prevStatus); // 回滚
+          setIsFollowing(prevStatus);
           toast.error("关注失败");
         }
       });
@@ -158,25 +148,20 @@ export default function PostCard({ post }: { post: PostProps }) {
       return toast.error("请先登录");
     }
 
-    // 记录旧状态，用于失败回滚
     const prevIsLiked = isLiked;
     const prevLikesCount = likesCount;
 
-    // A. 乐观更新 UI：立即改变状态和数字
     setIsLiked(!prevIsLiked);
     setLikesCount(prevIsLiked ? prevLikesCount - 1 : prevLikesCount + 1);
 
-    // 触发动画
     if (!prevIsLiked) {
       setIsAnimating(true);
-      setTimeout(() => setIsAnimating(false), 300); // 300ms 后重置动画状态
+      setTimeout(() => setIsAnimating(false), 300);
     }
 
-    // B. 发送后台请求
     startTransition(async () => {
       const res = await toggleLike(post.id);
       if (!res.success) {
-        // C. 如果失败，回滚状态
         setIsLiked(prevIsLiked);
         setLikesCount(prevLikesCount);
         toast.error("操作失败，请重试");
@@ -184,7 +169,6 @@ export default function PostCard({ post }: { post: PostProps }) {
     });
   };
 
-  // 辅助判断：不能关注自己
   const isSelf = currentUser?.username === post.username;
 
   return (
@@ -194,9 +178,7 @@ export default function PostCard({ post }: { post: PostProps }) {
         <div className="flex items-center gap-3">
           <Link href={`/${post.username}`}>
             <Avatar className="h-8 w-8 cursor-pointer ring-2 ring-transparent hover:ring-primary/20 transition">
-              <AvatarImage
-                src={`https://i.pravatar.cc/150?u=${post.username}`}
-              />
+              <AvatarImage src={post.userImage || `/avatar-default.png`} />
               <AvatarFallback>{post.username[0].toUpperCase()}</AvatarFallback>
             </Avatar>
           </Link>
@@ -208,23 +190,25 @@ export default function PostCard({ post }: { post: PostProps }) {
               >
                 {post.username}
               </Link>
-              <span className="text-muted-foreground text-[10px]">•</span>
+
               {!isSelf && (
-                <button
-                  disabled={isPending}
-                  onClick={handleFollow}
-                  className={cn(
-                    "font-semibold text-xs transition-colors",
-                    isFollowing
-                      ? "text-muted-foreground hover:text-foreground"
-                      : "text-blue-500 hover:text-blue-700"
-                  )}
-                >
-                  {isFollowing ? "已关注" : "关注"}
-                </button>
+                <>
+                  <span className="text-muted-foreground text-[10px]">•</span>
+                  <button
+                    disabled={isPending}
+                    onClick={handleFollow}
+                    className={cn(
+                      "font-semibold text-xs transition-colors",
+                      isFollowing
+                        ? "text-muted-foreground hover:text-foreground"
+                        : "text-blue-500 hover:text-blue-700"
+                    )}
+                  >
+                    {isFollowing ? "已关注" : "关注"}
+                  </button>
+                </>
               )}
             </div>
-            {/* 可选：显示地点或原创音频信息 */}
           </div>
         </div>
         <Button
@@ -236,22 +220,18 @@ export default function PostCard({ post }: { post: PostProps }) {
         </Button>
       </div>
 
-      {/* Image Carousel Container */}
       <div className="relative w-full aspect-4/5 bg-muted overflow-hidden group rounded-sm">
-        {/* 1. 滑动轨道 (Track) */}
         <div
           className="flex w-full h-full transition-transform duration-300 ease-out"
           style={{ transform: `translateX(-${currentImageIndex * 100}%)` }}
         >
           {post.images.map((imgUrl, index) => (
-            // 2. 每个图片容器占据 100% 宽度，且不压缩 (shrink-0)
             <div key={index} className="w-full h-full shrink-0 relative">
               <Image
                 src={imgUrl}
                 alt={`Post image ${index + 1}`}
                 fill
                 className="object-cover"
-                // 只有第一张图且是前几个帖子时才 priority，这里简单处理先不加或者只加给 index 0
                 priority={index === 0}
                 sizes="(max-width: 768px) 100vw, 470px"
                 unoptimized={process.env.NODE_ENV === "development"}
@@ -260,7 +240,6 @@ export default function PostCard({ post }: { post: PostProps }) {
           ))}
         </div>
 
-        {/* 左右箭头 (仅当有多图时显示) */}
         {post.images.length > 1 && (
           <>
             {/* Left Arrow: 第一张时不显示 */}
@@ -300,7 +279,7 @@ export default function PostCard({ post }: { post: PostProps }) {
                 className={cn(
                   "h-1.5 rounded-full transition-all shadow-sm",
                   idx === currentImageIndex
-                    ? "bg-white w-1.5 scale-125" // 当前选中稍微大一点
+                    ? "bg-white w-1.5 scale-125"
                     : "bg-white/50 w-1.5"
                 )}
               />
@@ -309,15 +288,13 @@ export default function PostCard({ post }: { post: PostProps }) {
         )}
       </div>
 
-      {/* Action Buttons & Counts Area */}
       <div className="p-3 pb-1">
         <div className="flex justify-between items-center mb-3">
           <div className="flex items-center gap-4">
-            {/* Like Button & Count */}
             <div className="flex items-center gap-1.5">
               <button
                 onClick={handleLike}
-                disabled={isPending} // 防止极其快速的连点，或者不禁用也可以，看需求
+                disabled={isPending}
                 className="flex items-center justify-center transition-transform active:scale-90 outline-none"
               >
                 <Heart
@@ -326,7 +303,6 @@ export default function PostCard({ post }: { post: PostProps }) {
                     isLiked
                       ? "fill-red-500 text-red-500"
                       : "text-foreground hover:text-muted-foreground",
-                    // 添加 CSS 动画类
                     isAnimating && "animate-bounce-custom"
                   )}
                 />
@@ -336,13 +312,9 @@ export default function PostCard({ post }: { post: PostProps }) {
               </span>
             </div>
 
-            {/* Comment Button & Count */}
             <div className="flex items-center gap-1.5">
               <Link href={`/post/${post.id}`} className="flex items-center">
-                <button
-                  // 修改点：同样添加 flex 居中，scale-x-[-1]用于水平翻转图标
-                  className="flex items-center justify-center hover:text-muted-foreground transition-colors scale-x-[-1]"
-                >
+                <button className="flex items-center justify-center hover:text-muted-foreground transition-colors scale-x-[-1]">
                   <MessageCircle className="h-6 w-6" />
                 </button>
               </Link>
@@ -351,24 +323,16 @@ export default function PostCard({ post }: { post: PostProps }) {
               </span>
             </div>
 
-            {/* Send Button */}
-            <button
-              // 修改点：添加 flex 居中，微调 margin
-              className="flex items-center justify-center hover:text-muted-foreground transition-colors -ml-1"
-            >
+            <button className="flex items-center justify-center hover:text-muted-foreground transition-colors -ml-1">
               <Send className="h-6 w-6" />
             </button>
           </div>
 
-          {/* Bookmark Button */}
-          <button
-            // 修改点：添加 flex 居中
-            className="flex items-center justify-center hover:text-muted-foreground transition-colors"
-          >
+          <button className="flex items-center justify-center hover:text-muted-foreground transition-colors">
             <Bookmark className="h-6 w-6" />
           </button>
         </div>
-        {/* Caption Section */}
+
         <div className="mb-2">
           <div className="flex flex-wrap items-baseline gap-2">
             <Link href={`/${post.username}`} className="font-bold text-sm">
@@ -382,7 +346,6 @@ export default function PostCard({ post }: { post: PostProps }) {
           </div>
         </div>
 
-        {/* Timestamp */}
         <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-3">
           {post.timestamp}
         </p>
@@ -390,7 +353,7 @@ export default function PostCard({ post }: { post: PostProps }) {
 
       <Separator className="hidden md:block opacity-50" />
 
-      {/* Add Comment Section */}
+      {/* Add Comment Section
       <div className="hidden md:flex items-center p-3 gap-3">
         <Smile className="h-6 w-6 text-muted-foreground cursor-pointer hover:text-foreground transition" />
         <input
@@ -404,7 +367,7 @@ export default function PostCard({ post }: { post: PostProps }) {
         >
           发布
         </Button>
-      </div>
+      </div> */}
     </Card>
   );
 }

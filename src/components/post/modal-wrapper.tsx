@@ -1,4 +1,3 @@
-// components/post/modal-wrapper.tsx
 "use client";
 
 import { useRouter } from "next/navigation";
