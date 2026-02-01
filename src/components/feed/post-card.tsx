@@ -21,6 +21,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { toggleFollow, toggleLike } from "@/actions/user";
 import { useAuthStore } from "@/store/auth-store";
+import { toggleSave } from "@/actions/post";
 
 interface PostProps {
   id: string;
@@ -34,6 +35,7 @@ interface PostProps {
   commentsCount: number;
   timestamp: string;
   isFollowing?: boolean;
+  isSaved?: boolean;
 }
 
 const formatNumber = (num: number) => {
@@ -108,8 +110,10 @@ export default function PostCard({ post }: { post: PostProps }) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isLiked, setIsLiked] = useState(post.isLiked || false);
   const [likesCount, setLikesCount] = useState(post.likes);
+
   const [isExpanded, setIsExpanded] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
+  const [isSaved, setIsSaved] = useState(post.isSaved || false);
   const [isPending, startTransition] = useTransition();
   const [isFollowing, setIsFollowing] = useState(post.isFollowing || false);
 
@@ -165,6 +169,30 @@ export default function PostCard({ post }: { post: PostProps }) {
         setIsLiked(prevIsLiked);
         setLikesCount(prevLikesCount);
         toast.error("操作失败，请重试");
+      }
+    });
+  };
+
+  const handleSave = async () => {
+    if (!currentUser) return toast.error("请先登录");
+
+    const prevSaved = isSaved;
+    // 乐观 UI 更新
+    setIsSaved(!prevSaved);
+
+    startTransition(async () => {
+      try {
+        const res = await toggleSave(post.id);
+        if (res.success) {
+          toast.success(res.isSaved ? "已收藏" : "已取消收藏");
+        } else {
+          // 失败回滚
+          setIsSaved(prevSaved);
+          toast.error("操作失败，请重试");
+        }
+      } catch (error) {
+        setIsSaved(prevSaved);
+        toast.error("网络错误");
       }
     });
   };
@@ -328,8 +356,19 @@ export default function PostCard({ post }: { post: PostProps }) {
             </button>
           </div>
 
-          <button className="flex items-center justify-center hover:text-muted-foreground transition-colors">
-            <Bookmark className="h-6 w-6" />
+          <button
+            onClick={handleSave}
+            disabled={isPending}
+            className="flex items-center justify-center hover:text-muted-foreground transition-colors active:scale-90"
+          >
+            <Bookmark
+              className={cn(
+                "h-6 w-6 transition-colors",
+                isSaved
+                  ? "fill-black text-black dark:fill-white dark:text-white"
+                  : ""
+              )}
+            />
           </button>
         </div>
 
@@ -352,22 +391,6 @@ export default function PostCard({ post }: { post: PostProps }) {
       </div>
 
       <Separator className="hidden md:block opacity-50" />
-
-      {/* Add Comment Section
-      <div className="hidden md:flex items-center p-3 gap-3">
-        <Smile className="h-6 w-6 text-muted-foreground cursor-pointer hover:text-foreground transition" />
-        <input
-          type="text"
-          placeholder="添加评论..."
-          className="flex-1 outline-none bg-transparent text-sm placeholder:text-muted-foreground/70"
-        />
-        <Button
-          variant="ghost"
-          className="text-blue-500 font-semibold hover:bg-transparent hover:text-blue-700 text-sm px-0 h-auto"
-        >
-          发布
-        </Button>
-      </div> */}
     </Card>
   );
 }

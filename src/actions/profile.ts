@@ -107,3 +107,51 @@ export async function removeProfileImage() {
     return { success: false, error: "Failed to remove image" };
   }
 }
+
+export async function getUserSavedPosts(username: string) {
+  const currentUser = await getCurrentUser();
+
+  // 1. 获取目标用户的 ID
+  const targetUser = await prisma.user.findUnique({
+    where: { username },
+    select: { id: true },
+  });
+
+  if (!targetUser) return [];
+
+  // 2. 隐私检查：收藏列表通常只有自己可见
+  // 如果当前未登录，或者登录用户不是目标用户，返回空
+  if (!currentUser || currentUser.id !== targetUser.id) {
+    return [];
+  }
+
+  // 3. 查询收藏表，并关联取出 Post 的详细信息
+  const savedPosts = await prisma.savedPost.findMany({
+    where: {
+      userId: targetUser.id,
+    },
+    orderBy: {
+      createdAt: "desc", // 按收藏时间倒序
+    },
+    include: {
+      post: {
+        include: {
+          _count: {
+            select: {
+              likes: true,
+              comments: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  // 4. 格式化数据，提取出 post 对象，使其结构与 getUserPosts 返回的一致
+  return savedPosts.map((saved) => ({
+    id: saved.post.id,
+    images: saved.post.images,
+    caption: saved.post.caption,
+    _count: saved.post._count,
+  }));
+}

@@ -7,6 +7,51 @@ import { revalidatePath } from "next/cache";
 
 const PAGE_SIZE = 5;
 
+export async function toggleSave(postId: string) {
+  const user = await getCurrentUser();
+  if (!user) return { success: false, error: "Unauthorized" };
+
+  try {
+    const existingSave = await prisma.savedPost.findUnique({
+      where: {
+        userId_postId: {
+          userId: user.id,
+          postId,
+        },
+      },
+    });
+
+    if (existingSave) {
+      // 如果已收藏，则取消收藏
+      await prisma.savedPost.delete({
+        where: {
+          userId_postId: {
+            userId: user.id,
+            postId,
+          },
+        },
+      });
+      revalidatePath("/");
+      revalidatePath(`/post/${postId}`);
+      return { success: true, isSaved: false };
+    } else {
+      // 如果未收藏，则添加收藏
+      await prisma.savedPost.create({
+        data: {
+          userId: user.id,
+          postId,
+        },
+      });
+      revalidatePath("/");
+      revalidatePath(`/post/${postId}`);
+      return { success: true, isSaved: true };
+    }
+  } catch (error) {
+    console.error("Toggle save error:", error);
+    return { success: false, error: "Failed to toggle save" };
+  }
+}
+
 export async function getFeedPosts(cursor?: string) {
   const user = await getCurrentUser();
   const userId = user?.id;
@@ -38,6 +83,13 @@ export async function getFeedPosts(cursor?: string) {
         ? {
             where: { userId: userId },
             select: { userId: true },
+          }
+        : false,
+      // 新增：查询当前用户是否收藏
+      savedBy: userId
+        ? {
+            where: { userId: userId },
+            select: { id: true },
           }
         : false,
       _count: {
@@ -99,6 +151,9 @@ export async function getPostById(postId: string) {
       },
       likes: userId
         ? { where: { userId: userId }, select: { userId: true } }
+        : false,
+      savedBy: userId
+        ? { where: { userId: userId }, select: { id: true } }
         : false,
     },
   });
