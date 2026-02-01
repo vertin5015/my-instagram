@@ -84,7 +84,7 @@ export async function getPostById(postId: string) {
     where: { id: postId },
     include: {
       user: {
-        select: { id: true, username: true, image: true },
+        select: { id: true, username: true, image: true, name: true },
       },
       comments: {
         orderBy: { createdAt: "desc" },
@@ -105,10 +105,41 @@ export async function getPostById(postId: string) {
 
   if (!post) return null;
 
+  let isFollowing = false;
+  if (userId && post.userId !== userId) {
+    const follow = await prisma.follows.findUnique({
+      where: {
+        followerId_followingId: {
+          followerId: userId,
+          followingId: post.userId,
+        },
+      },
+    });
+    isFollowing = !!follow;
+  }
+
   return {
-    ...post,
+    id: post.id,
+    userId: post.user.id,
+    username: post.user.username ?? "Unknown",
+    userImage: post.user.image ?? undefined,
+    caption: post.caption ?? "",
+    images: post.images,
+    likes: post._count.likes,
+    commentsCount: post._count.comments,
+    timestamp: post.createdAt,
     isLiked: userId ? post.likes.length > 0 : false,
-    likesCount: post._count.likes,
+    isFollowing,
+    comments: post.comments.map((comment) => ({
+      id: comment.id,
+      body: comment.body,
+      createdAt: comment.createdAt,
+      user: {
+        id: comment.user.id,
+        username: comment.user.username ?? "Unknown",
+        image: comment.user.image ?? undefined,
+      },
+    })),
   };
 }
 

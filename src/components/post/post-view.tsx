@@ -4,6 +4,7 @@
 import { useState, useTransition } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Heart,
@@ -23,31 +24,38 @@ import { PostOptions } from "@/components/post/post-options";
 
 type PostDetail = {
   id: string;
+  userId: string;
+  username: string;
+  userImage?: string;
+  caption: string;
   images: string[];
-  caption: string | null;
-  createdAt: Date;
-  user: { username: string | null; image: string | null };
+  likes: number;
+  commentsCount: number;
+  timestamp: Date;
+  isLiked: boolean;
+  isFollowing: boolean;
   comments: Array<{
     id: string;
     body: string;
     createdAt: Date;
-    user: { username: string | null; image: string | null };
+    user: {
+      id: string;
+      username: string;
+      image?: string;
+    };
   }>;
-  isLiked: boolean;
-  likesCount: number;
-  userId: string;
-  isFollowing?: boolean;
 };
 
 export default function PostView({ post }: { post: PostDetail }) {
   const { user: currentUser } = useAuthStore();
+  const router = useRouter();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [commentBody, setCommentBody] = useState("");
   const [isPending, startTransition] = useTransition();
-  const [isFollowing, setIsFollowing] = useState(post.isFollowing || false);
+  const [isFollowing, setIsFollowing] = useState(post.isFollowing);
   const [isFollowPending, startFollowTransition] = useTransition();
   const [isLiked, setIsLiked] = useState(post.isLiked);
-  const [likesCount, setLikesCount] = useState(post.likesCount);
+  const [likesCount, setLikesCount] = useState(post.likes);
 
   const [isAnimating, setIsAnimating] = useState(false);
   const [isLikePending, startLikeTransition] = useTransition();
@@ -71,18 +79,21 @@ export default function PostView({ post }: { post: PostDetail }) {
     });
   };
 
-  const handleFollow = () => {
+  const handleFollow = async () => {
     if (!currentUser) return toast.error("请先登录");
 
-    const prev = isFollowing;
-    setIsFollowing(!prev);
+    const prevStatus = isFollowing;
+    setIsFollowing(!prevStatus);
 
-    startFollowTransition(async () => {
-      const res = await toggleFollow(post.userId);
-      if (!res.success) {
-        setIsFollowing(prev);
-        toast.error("操作失败");
-      }
+    startTransition(() => {
+      toggleFollow(post.userId).then((res) => {
+        if (!res.success) {
+          setIsFollowing(prevStatus);
+          toast.error("关注失败");
+        } else {
+          router.refresh();
+        }
+      });
     });
   };
 
@@ -155,19 +166,18 @@ export default function PostView({ post }: { post: PostDetail }) {
         <div className="flex items-center justify-between p-4 border-b">
           <div className="flex items-center gap-3">
             <Avatar className="h-8 w-8">
-              <AvatarImage src={post.user.image || undefined} />
-              <AvatarFallback>{post.user.username?.[0]}</AvatarFallback>
+              <AvatarImage src={post.userImage} />
+              <AvatarFallback>{post.username?.[0]}</AvatarFallback>
             </Avatar>
             <span className="font-bold text-sm hover:opacity-80 cursor-pointer">
-              {post.user.username}
+              {post.username}
             </span>
-            <span className="text-muted-foreground text-[10px]">•</span>
+
             {!isSelf && (
               <>
                 <span className="text-muted-foreground text-[10px]">•</span>
                 <button
                   onClick={handleFollow}
-                  disabled={isFollowPending}
                   className={cn(
                     "font-semibold text-xs transition-colors",
                     isFollowing
@@ -193,14 +203,14 @@ export default function PostView({ post }: { post: PostDetail }) {
           {post.caption && (
             <div className="flex gap-3">
               <Avatar className="h-8 w-8 shrink-0">
-                <AvatarImage src={post.user.image || undefined} />
-                <AvatarFallback>{post.user.username?.[0]}</AvatarFallback>
+                <AvatarImage src={post.userImage} />
+                <AvatarFallback>{post.username?.[0]}</AvatarFallback>
               </Avatar>
               <div className="text-sm">
-                <span className="font-bold mr-2">{post.user.username}</span>
+                <span className="font-bold mr-2">{post.username}</span>
                 <span>{post.caption}</span>
                 <div className="text-xs text-muted-foreground mt-1">
-                  {new Date(post.createdAt).toLocaleDateString()}
+                  {new Date(post.timestamp).toLocaleDateString()}
                 </div>
               </div>
             </div>
@@ -210,7 +220,7 @@ export default function PostView({ post }: { post: PostDetail }) {
           {post.comments.map((comment) => (
             <div key={comment.id} className="flex gap-3 group">
               <Avatar className="h-8 w-8 shrink-0">
-                <AvatarImage src={comment.user.image || undefined} />
+                <AvatarImage src={comment.user.image} />
                 <AvatarFallback>{comment.user.username?.[0]}</AvatarFallback>
               </Avatar>
               <div className="text-sm flex-1">
@@ -256,7 +266,7 @@ export default function PostView({ post }: { post: PostDetail }) {
           </div>
           <div className="font-bold text-sm mb-2">{likesCount} 次点赞</div>
           <div className="text-[10px] text-muted-foreground uppercase mb-3">
-            {new Date(post.createdAt).toLocaleString()}
+            {new Date(post.timestamp).toLocaleString()}
           </div>
 
           {/* Comment Input */}

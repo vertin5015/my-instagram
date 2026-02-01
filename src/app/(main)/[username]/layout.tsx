@@ -51,7 +51,7 @@ export default async function ProfileLayout({ children, params }: Props) {
 
   return (
     <div className="flex flex-col items-center w-full pb-16">
-      <div className="w-full max-w-[935px] px-0 md:px-3 lg:px-10">
+      <div className="w-full max-w-233.75 px-0 md:px-3 lg:px-10">
         {/* ===== Profile Header ===== */}
         <header className="flex flex-col sm:flex-row gap-8 sm:gap-16 py-8">
           {/* Avatar */}
@@ -131,7 +131,7 @@ function TabLink({
     <Link
       href={href}
       className={cn(
-        "flex items-center gap-2 h-[52px] border-t border-transparent ",
+        "flex items-center gap-2 h-13 border-t border-transparent ",
         "text-muted-foreground hover:text-foreground"
       )}
     >

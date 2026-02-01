@@ -155,17 +155,17 @@ export function CreatePostModal() {
         className={cn(
           "bg-background w-full overflow-hidden rounded-xl shadow-2xl flex flex-col transition-all duration-300 ease-in-out",
           // 统一高度控制：手机端高度较大，桌面端固定高度
-          "h-[60vh] md:h-[70vh] max-h-[800px] min-h-[400px]",
+          "h-[60vh] md:h-[70vh] max-h-200 min-h-100",
 
           // 宽度控制：
-          step === "upload" && "max-w-[500px] md:aspect-square", // 上传页保持方正
-          step === "crop" && "max-w-[500px] md:w-auto md:min-w-[500px]", // 裁剪页宽度自适应
-          step === "caption" && "max-w-[900px] md:w-[900px]", // 文案页固定较宽
-          step === "success" && "max-w-[400px] h-auto min-h-[300px]" // 成功页小巧
+          step === "upload" && "max-w-125 md:aspect-square", // 上传页保持方正
+          step === "crop" && "max-w-125 md:w-auto md:min-w-125", // 裁剪页宽度自适应
+          step === "caption" && "max-w-225 md:w-225", // 文案页固定较宽
+          step === "success" && "max-w-100 h-auto min-h-75" // 成功页小巧
         )}
       >
         {/* --- Header --- */}
-        <header className="flex h-[44px] shrink-0 items-center justify-between border-b px-4 bg-background z-10 relative">
+        <header className="flex h-11 shrink-0 items-center justify-between border-b px-4 bg-background z-10 relative">
           <div className="w-10">
             {step !== "upload" && step !== "success" && (
               <button
