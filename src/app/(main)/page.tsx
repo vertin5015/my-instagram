@@ -27,7 +27,7 @@ export default async function HomePage() {
       <div className="w-full max-w-[630px] flex flex-col items-center">
         {/* 1. 顶部 Story 区域 (最近发帖的用户 - 圆环推荐) */}
         {recentStoryUsers.length > 0 && (
-          <div className="w-full flex gap-4 pb-4 overflow-x-auto scrollbar-hide px-0 sm:px-4 mb-4">
+          <div className="w-full flex gap-4 pb-4 overflow-x-auto scrollbar-hide px-2 sm:px-4 mb-4">
             {recentStoryUsers.map((user) => (
               <Link
                 key={user.id}
@@ -35,7 +35,7 @@ export default async function HomePage() {
                 className="flex flex-col items-center space-y-1 shrink-0 group"
               >
                 {/* Story Ring: 渐变边框 */}
-                <div className="w-[66px] h-[66px] sm:w-[80px] sm:h-[80px] rounded-full bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-600 p-[2px]">
+                <div className="w-[66px] h-[66px] sm:w-[80px] sm:h-[80px] rounded-full bg-linear-to-tr from-yellow-400 via-pink-500 to-purple-600 p-[2px]">
                   <div className="w-full h-full rounded-full bg-background p-[2px]">
                     <Avatar className="w-full h-full">
                       <AvatarImage

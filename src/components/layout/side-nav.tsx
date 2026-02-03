@@ -93,7 +93,7 @@ export default function SideNav() {
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
-              className="w-full flex justify-start gap-4 p-3 hover:bg-accent rounded-lg lg:px-3"
+              className="w-full flex justify-start h-[52px] gap-4 p-3 hover:bg-accent rounded-lg lg:px-3"
             >
               <Menu className="h-7 w-7 shrink-0" />
               <span className="hidden lg:block text-base font-medium">

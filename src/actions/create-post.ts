@@ -5,6 +5,9 @@ import { put } from "@vercel/blob";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache"; // 别忘了引入 revalidatePath
+import sharp from "sharp";
+
+type Area = { x: number; y: number; width: number; height: number };
 
 export async function createPost(formData: FormData) {
   const user = await getCurrentUser();
@@ -15,15 +18,49 @@ export async function createPost(formData: FormData) {
   const caption = (formData.get("caption") as string) || "";
   const files = formData.getAll("images") as File[];
 
+  const cropDataString = formData.get("cropData") as string;
+  const cropDataList: { crop: Area }[] = cropDataString
+    ? JSON.parse(cropDataString)
+    : [];
+
   if (!files.length) {
     throw new Error("No files to upload");
   }
 
   // 1. 上传图片 (保持你的优化逻辑)
-  const uploadPromises = files.map((file) => {
+  const uploadPromises = files.map(async (file, index) => {
     const ext = file.type?.split("/")[1] || "jpg";
     const key = `posts/${user.id}/${crypto.randomUUID()}.${ext}`;
-    return put(key, file, { access: "public", contentType: file.type });
+
+    // 1. 读取文件为 Buffer
+    const arrayBuffer = await file.arrayBuffer();
+    let buffer = Buffer.from(arrayBuffer) as Buffer;
+
+    // 2. 检查是否有对应的裁剪数据
+    const cropInfo = cropDataList[index]?.crop;
+
+    // 只有当 width 和 height > 0 时才执行裁剪
+    if (cropInfo && cropInfo.width > 0 && cropInfo.height > 0) {
+      try {
+        // 使用 sharp 进行裁剪
+        buffer = await sharp(buffer)
+          .extract({
+            left: Math.round(cropInfo.x),
+            top: Math.round(cropInfo.y),
+            width: Math.round(cropInfo.width),
+            height: Math.round(cropInfo.height),
+          })
+          .toBuffer();
+      } catch (error) {
+        console.error("Server side crop failed, using original image", error);
+      }
+    }
+
+    // 3. 上传处理后的 Buffer 到 Vercel Blob
+    return put(key, buffer, {
+      access: "public",
+      contentType: file.type, // 或者 'image/jpeg' 如果 sharp 转换了格式
+    });
   });
 
   const blobs = await Promise.all(uploadPromises);

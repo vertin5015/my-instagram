@@ -24,7 +24,7 @@ export function ParsedCaption({
   const displayParts = shouldTruncate ? text.slice(0, 60).split(regex) : parts;
 
   return (
-    <div className="text-sm leading-relaxed whitespace-pre-wrap break-words">
+    <div className="text-sm leading-relaxed whitespace-pre-wrap wrap-break-word">
       {displayParts.map((part, index) => {
         if (part.startsWith("#")) {
           const tag = part.slice(1);

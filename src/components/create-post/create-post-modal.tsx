@@ -3,8 +3,6 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { ArrowLeft, Smile, X } from "lucide-react";
 import EmojiPicker, { Theme, EmojiClickData } from "emoji-picker-react";
-import Image from "next/image";
-
 import { useCreatePostStore } from "@/store/create-post-store";
 import { useAuthStore } from "@/store/auth-store";
 import { Button } from "@/components/ui/button";
@@ -13,7 +11,7 @@ import { cn } from "@/lib/utils";
 import { createPost } from "@/actions/create-post";
 
 import { CreatePostUpload } from "./create-post-upload";
-import { ImageCarousel } from "./image-carousel";
+import { ImageCarousel, CarouselRef, ImageCropData } from "./image-carousel";
 
 const MAX_CHAR = 2200;
 
@@ -35,6 +33,12 @@ export function CreatePostModal() {
   const emojiRef = useRef<HTMLDivElement>(null);
   const [isSharing, setIsSharing] = useState(false);
 
+  // 1. 新增：用于获取 ImageCarousel 内部数据的 ref
+  const carouselRef = useRef<CarouselRef>(null);
+
+  // 2. 新增：暂存从 ImageCarousel 获取的裁剪数据
+  const [finalCropData, setFinalCropData] = useState<ImageCropData[]>([]);
+
   // 清理内存
   useEffect(() => {
     return () => imagePreviewUrls.forEach((url) => URL.revokeObjectURL(url));
@@ -54,10 +58,7 @@ export function CreatePostModal() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // --- 统一的安全关闭/返回逻辑 ---
-
   const handleSafeClose = useCallback(() => {
-    // 如果在 crop 或 caption 步骤，说明已有内容，需要确认
     if (step === "crop" || step === "caption") {
       const confirm = window.confirm(
         "要放弃帖子吗？如果离开，所做的修改将会丢失。"
@@ -65,9 +66,9 @@ export function CreatePostModal() {
       if (confirm) {
         close();
         setImages([]);
+        setFinalCropData([]); // 重置数据
       }
     } else {
-      // 成功页或上传页直接关闭
       close();
     }
   }, [step, close, setImages]);
@@ -80,6 +81,7 @@ export function CreatePostModal() {
       if (confirm) {
         setImages([]);
         setStep("upload");
+        setFinalCropData([]);
       }
     } else if (step === "caption") {
       setStep("crop");
@@ -97,19 +99,44 @@ export function CreatePostModal() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, handleSafeClose]);
 
+  // --- 处理“下一步”点击 ---
+  const handleNextStep = () => {
+    if (step === "crop" && carouselRef.current) {
+      // 1. 从子组件获取当前的裁剪数据
+      const crops = carouselRef.current.getCropData();
+      // 2. 存入 State
+      setFinalCropData(crops);
+      // 3. 进入下一步 (因为不需要前端处理图片，所以瞬间完成)
+      setStep("caption");
+    } else {
+      setStep("caption");
+    }
+  };
+
   const handleShare = async () => {
     if (!imageFiles.length || isSharing) return;
     try {
       setIsSharing(true);
       const formData = new FormData();
       formData.append("caption", caption || "");
+
+      // 添加原图
       for (const file of imageFiles) {
         formData.append("images", file);
       }
+
+      // 添加裁剪数据 (序列化为 JSON 字符串)
+      // 注意：这里的数据顺序必须与 images 顺序一致，通常 imageFiles 索引顺序是一致的
+      if (finalCropData.length > 0) {
+        formData.append("cropData", JSON.stringify(finalCropData));
+      }
+
       await createPost(formData);
+
       setStep("success");
       setImages([]);
       setCaption("");
+      setFinalCropData([]);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "发布失败，请稍后重试";
       window.alert(msg);
@@ -127,13 +154,6 @@ export function CreatePostModal() {
 
   if (!isOpen) return null;
 
-  // --- 布局计算 ---
-  // 核心优化：避免使用 aspect-square 导致的高度剧烈变化。
-  // 我们固定高度，让宽度自适应。
-  // Upload: 宽=高
-  // Crop: 宽度跟随图片比例，但受限于 max-w
-  // Caption: 宽度变宽以容纳侧边栏
-
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-sm p-4 md:p-8 animate-in fade-in duration-200"
@@ -149,19 +169,15 @@ export function CreatePostModal() {
         <X className="h-8 w-8 drop-shadow-md" />
       </button>
 
-      {/* Modal 内容容器 */}
       <div
         onClick={(e) => e.stopPropagation()}
         className={cn(
           "bg-background w-full overflow-hidden rounded-xl shadow-2xl flex flex-col transition-all duration-300 ease-in-out",
-          // 统一高度控制：手机端高度较大，桌面端固定高度
           "h-[60vh] md:h-[70vh] max-h-200 min-h-100",
-
-          // 宽度控制：
-          step === "upload" && "max-w-125 md:aspect-square", // 上传页保持方正
-          step === "crop" && "max-w-125 md:w-auto md:min-w-125", // 裁剪页宽度自适应
-          step === "caption" && "max-w-225 md:w-225", // 文案页固定较宽
-          step === "success" && "max-w-100 h-auto min-h-75" // 成功页小巧
+          step === "upload" && "max-w-125 md:aspect-square",
+          step === "crop" && "max-w-125 md:w-auto md:min-w-125",
+          step === "caption" && "max-w-225 md:w-225",
+          step === "success" && "max-w-100 h-auto min-h-75"
         )}
       >
         {/* --- Header --- */}
@@ -189,7 +205,7 @@ export function CreatePostModal() {
               <Button
                 variant="ghost"
                 className="text-[#0095f6] hover:text-[#00376b] font-semibold hover:bg-transparent p-0 text-sm"
-                onClick={() => setStep("caption")}
+                onClick={handleNextStep} // 改为调用 handleNextStep
               >
                 下一步
               </Button>
@@ -211,7 +227,6 @@ export function CreatePostModal() {
         <div className="flex flex-1 overflow-hidden relative">
           {step === "success" ? (
             <div className="flex w-full flex-col items-center justify-center gap-4 animate-in zoom-in-95 p-8">
-              {/* 成功页 UI 保持不变 */}
               <div className="rounded-full bg-linear-to-tr from-yellow-400 via-pink-500 to-purple-600 p-[2px]">
                 <div className="rounded-full bg-background p-4">
                   <svg
@@ -237,11 +252,10 @@ export function CreatePostModal() {
             </div>
           ) : (
             <div className="flex w-full h-full">
-              {/* 左侧：图片区域 */}
+              {/* 图片区域 */}
               <div
                 className={cn(
                   "relative h-full transition-all duration-300 ease-in-out bg-black flex items-center justify-center",
-                  // 在 caption 模式下，图片宽度占 60% (md以上)，手机端隐藏或变小
                   step === "caption"
                     ? "hidden md:flex md:w-[60%] border-r border-border"
                     : "w-full",
@@ -251,14 +265,17 @@ export function CreatePostModal() {
                 {step === "upload" ? (
                   <CreatePostUpload onImagesSelected={setImages} />
                 ) : (
-                  <ImageCarousel urls={imagePreviewUrls} step={step} />
+                  <ImageCarousel
+                    ref={carouselRef} // 绑定 Ref
+                    urls={imagePreviewUrls}
+                    step={step}
+                  />
                 )}
               </div>
 
-              {/* 右侧：文案填写 (仅在 caption 步骤显示) */}
+              {/* 文案区域 */}
               {step === "caption" && (
                 <div className="flex flex-col w-full md:w-[40%] bg-background h-full">
-                  {/* 用户信息 */}
                   <div className="flex items-center gap-3 p-4 shrink-0">
                     <Avatar className="h-8 w-8">
                       <AvatarImage src={user?.image || undefined} />
@@ -271,7 +288,6 @@ export function CreatePostModal() {
                     </span>
                   </div>
 
-                  {/* 输入框 */}
                   <textarea
                     value={caption}
                     onChange={(e) =>
@@ -282,7 +298,6 @@ export function CreatePostModal() {
                     autoFocus
                   />
 
-                  {/* Emoji & 字数 */}
                   <div className="relative flex items-center justify-between px-4 py-3 border-t md:border-t-0 shrink-0">
                     <div className="relative" ref={emojiRef}>
                       <button
@@ -291,7 +306,6 @@ export function CreatePostModal() {
                       >
                         <Smile className="h-6 w-6" />
                       </button>
-
                       {showEmojiPicker && (
                         <div className="absolute bottom-10 left-0 z-50 shadow-xl">
                           <EmojiPicker
@@ -305,13 +319,10 @@ export function CreatePostModal() {
                         </div>
                       )}
                     </div>
-
                     <span className="text-xs text-muted-foreground font-medium">
                       {caption.length}/{MAX_CHAR}
                     </span>
                   </div>
-
-                  {/* 可以在此添加更多选项，例如地理位置、高级设置等 */}
                   <div className="border-t border-border p-4 text-sm text-muted-foreground">
                     高级设置 (演示)
                   </div>
