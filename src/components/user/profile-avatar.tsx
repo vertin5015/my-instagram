@@ -31,8 +31,8 @@ export function ProfileAvatar({ user, isCurrentUser }: ProfileAvatarProps) {
 
   // 压缩配置 (与你提供的代码一致)
   const compressionOptions = {
-    maxSizeMB: 0.5, // 头像通常不需要太大，0.5MB 足够
-    maxWidthOrHeight: 500, // 头像 500x500 足够清晰
+    maxSizeMB: 0.5,
+    maxWidthOrHeight: 500,
     useWebWorker: true,
     fileType: "image/jpeg",
   };

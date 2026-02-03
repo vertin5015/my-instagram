@@ -108,6 +108,40 @@ export async function removeProfileImage() {
   }
 }
 
+export async function updateProfileInfo(formData: FormData) {
+  const user = await getCurrentUser();
+  if (!user) {
+    return { success: false, error: "Unauthorized" };
+  }
+
+  const name = formData.get("name") as string;
+  const bio = formData.get("bio") as string;
+
+  // 简单的服务器端验证
+  if (name && name.length > 50) {
+    return { success: false, error: "名称不能超过50个字符" };
+  }
+  if (bio && bio.length > 100) {
+    return { success: false, error: "简介不能超过100个字" };
+  }
+
+  try {
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        name: name || null, // 如果为空字符串则存为 null 或保持空字符串，视需求而定
+        bio: bio || null,
+      },
+    });
+
+    revalidatePath(`/${user.username}`);
+    return { success: true };
+  } catch (error) {
+    console.error("Update profile info error:", error);
+    return { success: false, error: "更新失败，请重试" };
+  }
+}
+
 export async function getUserSavedPosts(username: string) {
   const currentUser = await getCurrentUser();
 
