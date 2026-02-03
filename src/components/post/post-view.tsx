@@ -17,10 +17,11 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { createComment } from "@/actions/post";
+import { createComment, toggleSave } from "@/actions/post";
 import { toggleFollow, toggleLike } from "@/actions/user";
 import { useAuthStore } from "@/store/auth-store";
 import { PostOptions } from "@/components/post/post-options";
+import { ParsedCaption } from "./parsed-caption";
 
 type PostDetail = {
   id: string;
@@ -54,6 +55,7 @@ export default function PostView({ post }: { post: PostDetail }) {
   const [isPending, startTransition] = useTransition();
   const [isFollowing, setIsFollowing] = useState(post.isFollowing);
   const [isFollowPending, startFollowTransition] = useTransition();
+  const [isSaved, setIsSaved] = useState(false);
   const [isLiked, setIsLiked] = useState(post.isLiked);
   const [likesCount, setLikesCount] = useState(post.likes);
 
@@ -77,6 +79,21 @@ export default function PostView({ post }: { post: PostDetail }) {
         toast.error("发送失败");
       }
     });
+  };
+
+  const handleSave = async () => {
+    if (!currentUser) return toast.error("请先登录");
+    const prevSaved = isSaved;
+    setIsSaved(!prevSaved);
+
+    // 注意：这里没有使用 transition，简单处理
+    try {
+      const res = await toggleSave(post.id);
+      if (!res.success) setIsSaved(prevSaved);
+      else toast.success(res.isSaved ? "已收藏" : "已取消收藏");
+    } catch {
+      setIsSaved(prevSaved);
+    }
   };
 
   const handleFollow = async () => {
@@ -201,15 +218,28 @@ export default function PostView({ post }: { post: PostDetail }) {
         <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-hide">
           {/* Caption */}
           {post.caption && (
-            <div className="flex gap-3">
+            <div className="flex gap-3 items-start">
+              {" "}
+              {/* items-start 更好 */}
               <Avatar className="h-8 w-8 shrink-0">
                 <AvatarImage src={post.userImage} />
                 <AvatarFallback>{post.username?.[0]}</AvatarFallback>
               </Avatar>
-              <div className="text-sm">
-                <span className="font-bold mr-2">{post.username}</span>
-                <span>{post.caption}</span>
-                <div className="text-xs text-muted-foreground mt-1">
+              <div className="text-sm flex-1">
+                {/* Username */}
+                <Link
+                  href={`/${post.username}`}
+                  className="font-bold mr-2 hover:opacity-80"
+                >
+                  {post.username}
+                </Link>
+
+                {/* 使用 ParsedCaption，PostView 中通常不需要折叠 */}
+                <div className="inline">
+                  <ParsedCaption text={post.caption} defaultExpanded={true} />
+                </div>
+
+                <div className="text-xs text-muted-foreground mt-2">
                   {new Date(post.timestamp).toLocaleDateString()}
                 </div>
               </div>
@@ -262,7 +292,19 @@ export default function PostView({ post }: { post: PostDetail }) {
               <MessageCircle className="h-6 w-6 cursor-pointer scale-x-[-1]" />
               <Send className="h-6 w-6 cursor-pointer" />
             </div>
-            <Bookmark className="h-6 w-6 cursor-pointer" />
+            <button
+              onClick={handleSave}
+              className="active:scale-90 transition-transform"
+            >
+              <Bookmark
+                className={cn(
+                  "h-6 w-6 cursor-pointer",
+                  isSaved
+                    ? "fill-black text-black dark:fill-white dark:text-white"
+                    : ""
+                )}
+              />
+            </button>
           </div>
           <div className="font-bold text-sm mb-2">{likesCount} 次点赞</div>
           <div className="text-[10px] text-muted-foreground uppercase mb-3">

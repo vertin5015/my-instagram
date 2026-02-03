@@ -97,7 +97,7 @@ export default function SideNav() {
             >
               <Menu className="h-7 w-7 shrink-0" />
               <span className="hidden lg:block text-base font-medium">
-                More
+                更多
               </span>
             </Button>
           </DropdownMenuTrigger>

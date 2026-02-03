@@ -30,6 +30,8 @@ model User {
   followedBy    Follows[] @relation("following")
   following     Follows[] @relation("follower")
 
+  taggedInPosts Post[]    @relation("PostMentions")
+
   accounts      Account[]
   sessions      Session[]
 }
@@ -45,6 +47,7 @@ model Post {
 
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mentionedUsers User[] @relation("PostMentions")
 
   comments  Comment[]
   likes     Like[]
