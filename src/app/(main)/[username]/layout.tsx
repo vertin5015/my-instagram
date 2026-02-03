@@ -69,14 +69,14 @@ export default async function ProfileLayout({ children, params }: Props) {
              让内部文本在移动端居中，桌面端左对齐。
              min-w-0 防止 flex 子项被长文本撑大。
           */}
-          <section className="flex flex-col gap-4 sm:gap-5 flex-1 min-w-0 w-full items-center sm:items-start text-center sm:text-left">
+          <section className="flex flex-col gap-4 sm:gap-4 flex-1 min-w-0 w-full items-center sm:items-start text-center sm:text-left">
             <div className="flex flex-col gap-1 w-full">
               {/* 
                   修复3: flex-wrap 和 justify-center 
                   防止用户名和按钮在极小屏幕重叠，且在移动端居中 
               */}
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-4">
-                <h2 className="text-xl font-normal truncate max-w-[200px] sm:max-w-none">
+                <h2 className="text-xl font-bold truncate max-w-[200px] sm:max-w-none">
                   {username}
                 </h2>
 
@@ -103,7 +103,7 @@ export default async function ProfileLayout({ children, params }: Props) {
 
               {/* 名字显示 (仅在名字与用户名不同时更有意义，这里保持你原有的逻辑) */}
               {user.name && (
-                <div className="text-sm font-bold mt-1 hidden sm:block">
+                <div className="text-sm font-normal mt-1 hidden sm:block">
                   {user.name}
                 </div>
               )}
