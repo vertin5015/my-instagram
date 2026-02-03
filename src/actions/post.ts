@@ -120,6 +120,7 @@ export async function getFeedPosts(cursor?: string) {
     timestamp: post.createdAt,
     isLiked: userId ? post.likes.length > 0 : false,
     isFollowing: userId ? followingIds.has(post.userId) : false,
+    isSaved: userId ? post.savedBy.length > 0 : false,
   }));
 
   return {
@@ -185,6 +186,7 @@ export async function getPostById(postId: string) {
     timestamp: post.createdAt,
     isLiked: userId ? post.likes.length > 0 : false,
     isFollowing,
+    isSaved: userId ? post.savedBy.length > 0 : false,
     comments: post.comments.map((comment) => ({
       id: comment.id,
       body: comment.body,

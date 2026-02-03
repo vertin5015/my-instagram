@@ -19,6 +19,7 @@ interface FeedPost {
   timestamp: Date;
   isLiked: boolean;
   isFollowing: boolean;
+  isSaved: boolean;
 }
 
 export default function FeedContainer() {

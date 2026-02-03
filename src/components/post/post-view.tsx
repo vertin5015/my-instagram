@@ -35,6 +35,7 @@ type PostDetail = {
   timestamp: Date;
   isLiked: boolean;
   isFollowing: boolean;
+  isSaved: boolean;
   comments: Array<{
     id: string;
     body: string;
@@ -55,7 +56,7 @@ export default function PostView({ post }: { post: PostDetail }) {
   const [isPending, startTransition] = useTransition();
   const [isFollowing, setIsFollowing] = useState(post.isFollowing);
   const [isFollowPending, startFollowTransition] = useTransition();
-  const [isSaved, setIsSaved] = useState(false);
+  const [isSaved, setIsSaved] = useState(post.isSaved);
   const [isLiked, setIsLiked] = useState(post.isLiked);
   const [likesCount, setLikesCount] = useState(post.likes);
 
