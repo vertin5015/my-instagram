@@ -4,20 +4,15 @@
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { createNotification } from "@/lib/notification"; // 引入 helper
 
 export async function toggleFollow(targetUserId: string) {
   try {
     const currentUser = await getCurrentUser();
-
-    if (!currentUser) {
-      throw new Error("Unauthorized");
-    }
-
-    if (currentUser.id === targetUserId) {
+    if (!currentUser) throw new Error("Unauthorized");
+    if (currentUser.id === targetUserId)
       throw new Error("Cannot follow yourself");
-    }
 
-    // 1. 检查当前是否已关注
     const existingFollow = await prisma.follows.findUnique({
       where: {
         followerId_followingId: {
@@ -27,8 +22,8 @@ export async function toggleFollow(targetUserId: string) {
       },
     });
 
-    // 2. 这里的逻辑是：如果有记录则删除（取关），没记录则创建（关注）
     if (existingFollow) {
+      // 取关
       await prisma.follows.delete({
         where: {
           followerId_followingId: {
@@ -37,33 +32,35 @@ export async function toggleFollow(targetUserId: string) {
           },
         },
       });
+      // 可选：取关时删除之前的关注通知
     } else {
+      // 关注
       await prisma.follows.create({
         data: {
           followerId: currentUser.id,
           followingId: targetUserId,
         },
       });
-      // TODO: 这里可以添加发送通知的逻辑
+
+      // --- 触发通知: 关注 ---
+      await createNotification({
+        recipientId: targetUserId,
+        issuerId: currentUser.id,
+        type: "FOLLOW",
+      });
     }
 
-    // 3. 获取目标用户的 username 用于刷新路径
-    // 并不是必须的，但为了精确刷新 Profile 页面是很好的
     const targetUser = await prisma.user.findUnique({
       where: { id: targetUserId },
       select: { username: true },
     });
 
-    // 4. 刷新缓存
-    revalidatePath("/"); // 刷新首页 Feed 流
+    revalidatePath("/");
     if (targetUser?.username) {
-      revalidatePath(`/${targetUser.username}`); // 刷新对方的个人主页
+      revalidatePath(`/${targetUser.username}`);
     }
 
-    return {
-      success: true,
-      isFollowing: !existingFollow, // 返回新的状态
-    };
+    return { success: true, isFollowing: !existingFollow };
   } catch (error) {
     console.error("[TOGGLE_FOLLOW_ERROR]", error);
     return { success: false, error: "Failed to update follow status" };
@@ -72,49 +69,41 @@ export async function toggleFollow(targetUserId: string) {
 
 export async function toggleLike(postId: string) {
   const user = await getCurrentUser();
-
-  if (!user) {
-    throw new Error("Unauthorized");
-  }
+  if (!user) throw new Error("Unauthorized");
 
   try {
-    const userId = user.id;
-
-    // 1. 检查是否存在点赞记录
     const existingLike = await prisma.like.findUnique({
-      where: {
-        userId_postId: {
-          userId,
-          postId,
-        },
-      },
+      where: { userId_postId: { userId: user.id, postId } },
     });
 
     if (existingLike) {
-      // 2. 如果已赞，则删除 (取消点赞)
       await prisma.like.delete({
-        where: {
-          userId_postId: {
-            userId,
-            postId,
-          },
-        },
+        where: { userId_postId: { userId: user.id, postId } },
       });
     } else {
-      // 3. 如果未赞，则创建 (点赞)
       await prisma.like.create({
-        data: {
-          userId,
-          postId,
-        },
+        data: { userId: user.id, postId },
       });
-      // 这里可以添加 Notification 通知逻辑
+
+      // --- 触发通知: 点赞 ---
+      // 1. 先查找帖子作者
+      const post = await prisma.post.findUnique({
+        where: { id: postId },
+        select: { userId: true },
+      });
+
+      if (post) {
+        await createNotification({
+          recipientId: post.userId,
+          issuerId: user.id,
+          type: "LIKE",
+          postId: postId,
+        });
+      }
     }
 
-    // 4. 重新验证相关路径缓存
     revalidatePath("/");
     revalidatePath(`/post/${postId}`);
-
     return { success: true };
   } catch (error) {
     console.error("Toggle like error:", error);

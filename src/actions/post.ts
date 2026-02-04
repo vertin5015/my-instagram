@@ -4,6 +4,7 @@
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { createNotification } from "@/lib/notification";
 
 const PAGE_SIZE = 5;
 
@@ -263,23 +264,74 @@ async function syncPostMentions(postId: string, caption: string | null) {
 export async function createComment(
   postId: string,
   body: string,
-  parentId?: string // 新增参数
+  parentId?: string
 ) {
   const user = await getCurrentUser();
   if (!user) throw new Error("Unauthorized");
   if (!body.trim()) throw new Error("Comment cannot be empty");
 
+  // 1. 创建评论
   const comment = await prisma.comment.create({
     data: {
       body,
       postId,
       userId: user.id,
-      parentId, // 存入数据库
+      parentId,
     },
   });
 
+  // --- 通知的异步处理 ---
+  // 放在主逻辑之后，不阻塞返回，或者使用 Promise.allSettled
+  (async () => {
+    try {
+      // A. 获取帖子信息 (为了通知帖子作者)
+      const post = await prisma.post.findUnique({
+        where: { id: postId },
+        select: { userId: true },
+      });
+
+      if (post && post.userId !== user.id) {
+        await createNotification({
+          recipientId: post.userId,
+          issuerId: user.id,
+          type: "COMMENT", // 你的帖子被评论
+          postId,
+          commentId: comment.id,
+        });
+      }
+
+      // B. 如果是回复 (parentId 存在)，通知原评论作者
+      if (parentId) {
+        const parentComment = await prisma.comment.findUnique({
+          where: { id: parentId },
+          select: { userId: true },
+        });
+
+        // 如果原评论作者不是帖子作者(避免发两次)，且不是自己
+        if (
+          parentComment &&
+          parentComment.userId !== user.id &&
+          parentComment.userId !== post?.userId
+        ) {
+          await createNotification({
+            recipientId: parentComment.userId,
+            issuerId: user.id,
+            type: "COMMENT", // 简化处理，统一叫 COMMENT，或者你可以新增 type: REPLY
+            postId,
+            commentId: comment.id,
+          });
+        }
+      }
+
+      // C. 检查 @Mention (这里也可以做，参考 createPost 的逻辑)
+      // 如果 comment.body 中有 @username，解析并发送 MENTION 通知
+    } catch (error) {
+      console.error("Async notification error:", error);
+    }
+  })();
+
   revalidatePath(`/post/${postId}`);
-  revalidatePath("/"); // 刷新 Feed 页的评论数
+  revalidatePath("/");
 
   return { success: true, comment };
 }
@@ -400,6 +452,23 @@ export async function toggleCommentLike(commentId: string) {
       await prisma.commentLike.create({
         data: { userId: user.id, commentId },
       });
+
+      // --- 触发通知: 评论点赞 ---
+      const comment = await prisma.comment.findUnique({
+        where: { id: commentId },
+        select: { userId: true, postId: true },
+      });
+
+      if (comment) {
+        await createNotification({
+          recipientId: comment.userId,
+          issuerId: user.id,
+          type: "COMMENT_LIKE",
+          postId: comment.postId,
+          commentId: commentId,
+        });
+      }
+
       revalidatePath("/");
       return { success: true, isLiked: true };
     }

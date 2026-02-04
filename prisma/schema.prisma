@@ -8,6 +8,15 @@ datasource db {
   provider = "postgresql"
 }
 
+enum NotificationType {
+  LIKE
+  COMMENT
+  FOLLOW
+  MENTION
+  NEW_POST
+  COMMENT_LIKE
+}
+
 model User {
   id            String    @id @default(cuid())
   name          String?
@@ -33,6 +42,9 @@ model User {
 
   taggedInPosts Post[]    @relation("PostMentions")
 
+  notificationsReceived Notification[] @relation("recipient")
+  notificationsSent     Notification[] @relation("issuer")
+
   accounts      Account[]
   sessions      Session[]
 }
@@ -53,6 +65,7 @@ model Post {
   comments  Comment[]
   likes     Like[]
   savedBy   SavedPost[]
+  notifications Notification[]
   
   // --- 建议添加：Tag 关联 (优化搜索) ---
   tags      Tag[]
@@ -85,6 +98,7 @@ model Comment {
 
   // --- 新增：评论点赞关联 ---
   likes     CommentLike[]
+  notifications Notification[]
 
   @@index([postId])
   @@index([userId])
@@ -144,6 +158,32 @@ model SavedPost {
   post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
 
   @@unique([userId, postId])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  createdAt DateTime         @default(now())
+  read      Boolean          @default(false)
+  type      NotificationType
+
+  // 接收者 (谁收到通知)
+  recipientId String
+  recipient   User   @relation("recipient", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  // 发起者 (谁触发了通知)
+  issuerId    String
+  issuer      User   @relation("issuer", fields: [issuerId], references: [id], onDelete: Cascade)
+
+  // 关联资源 (可选，取决于通知类型)
+  postId      String?
+  post        Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  commentId   String?
+  comment     Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@index([recipientId])
+  @@index([issuerId])
+  @@index([postId])
 }
 
 // NextAuth Models (保持不变)
