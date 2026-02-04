@@ -1,7 +1,7 @@
 // components/post/post-view.tsx
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -14,6 +14,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Loader2,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -21,7 +22,8 @@ import { createComment, toggleSave } from "@/actions/post";
 import { toggleFollow, toggleLike } from "@/actions/user";
 import { useAuthStore } from "@/store/auth-store";
 import { PostOptions } from "@/components/post/post-options";
-import { ParsedCaption } from "./parsed-caption";
+import { ParsedText } from "./parsed-text";
+import { CommentItem, CommentType } from "./comment-item";
 
 type PostDetail = {
   id: string;
@@ -36,16 +38,7 @@ type PostDetail = {
   isLiked: boolean;
   isFollowing: boolean;
   isSaved: boolean;
-  comments: Array<{
-    id: string;
-    body: string;
-    createdAt: Date;
-    user: {
-      id: string;
-      username: string;
-      image?: string;
-    };
-  }>;
+  comments: CommentType[];
 };
 
 export default function PostView({ post }: { post: PostDetail }) {
@@ -55,7 +48,6 @@ export default function PostView({ post }: { post: PostDetail }) {
   const [commentBody, setCommentBody] = useState("");
   const [isPending, startTransition] = useTransition();
   const [isFollowing, setIsFollowing] = useState(post.isFollowing);
-  const [isFollowPending, startFollowTransition] = useTransition();
   const [isSaved, setIsSaved] = useState(post.isSaved);
   const [isLiked, setIsLiked] = useState(post.isLiked);
   const [likesCount, setLikesCount] = useState(post.likes);
@@ -63,19 +55,43 @@ export default function PostView({ post }: { post: PostDetail }) {
   const [isAnimating, setIsAnimating] = useState(false);
   const [isLikePending, startLikeTransition] = useTransition();
 
+  const [replyingTo, setReplyingTo] = useState<{
+    id: string;
+    username: string;
+  } | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
   const handlePrev = () => setCurrentImageIndex((p) => Math.max(0, p - 1));
   const handleNext = () =>
     setCurrentImageIndex((p) => Math.min(post.images.length - 1, p + 1));
+
+  const handleReplyClick = (username: string, commentId: string) => {
+    setReplyingTo({ id: commentId, username });
+    // Instagram 风格：在输入框自动添加 @username
+    setCommentBody(`@${username} `);
+    inputRef.current?.focus();
+  };
+
+  // --- 取消回复模式 ---
+  const handleCancelReply = () => {
+    setReplyingTo(null);
+    setCommentBody("");
+  };
 
   const handleCommentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!commentBody.trim()) return;
 
+    // 如果当前正在回复某人，但用户删除了 @username，我们应该作为普通评论发送吗？
+    // 这里简单处理：如果有 replyingTo 状态，就传 parentId
+    const parentId = replyingTo ? replyingTo.id : undefined;
+
     startTransition(async () => {
       try {
-        await createComment(post.id, commentBody);
+        await createComment(post.id, commentBody, parentId);
         setCommentBody("");
-        toast.success("评论已发送");
+        setReplyingTo(null); // 发送成功后重置
+        toast.success("发送成功");
       } catch (error) {
         toast.error("发送失败");
       }
@@ -237,7 +253,13 @@ export default function PostView({ post }: { post: PostDetail }) {
 
                 {/* 使用 ParsedCaption，PostView 中通常不需要折叠 */}
                 <div className="inline">
-                  <ParsedCaption text={post.caption} defaultExpanded={true} />
+                  <div className="inline">
+                    <ParsedText
+                      text={post.caption}
+                      defaultExpanded={true}
+                      threshold={150}
+                    />
+                  </div>
                 </div>
 
                 <div className="text-xs text-muted-foreground mt-2">
@@ -249,25 +271,11 @@ export default function PostView({ post }: { post: PostDetail }) {
 
           {/* Comments List */}
           {post.comments.map((comment) => (
-            <div key={comment.id} className="flex gap-3 group">
-              <Avatar className="h-8 w-8 shrink-0">
-                <AvatarImage src={comment.user.image} />
-                <AvatarFallback>{comment.user.username?.[0]}</AvatarFallback>
-              </Avatar>
-              <div className="text-sm flex-1">
-                <span className="font-bold mr-2">{comment.user.username}</span>
-                <span>{comment.body}</span>
-                <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                  <span>
-                    {new Date(comment.createdAt).toLocaleDateString()}
-                  </span>
-                  <button className="font-semibold hover:text-foreground">
-                    回复
-                  </button>
-                </div>
-              </div>
-              <Heart className="h-3 w-3 mt-2 opacity-0 group-hover:opacity-100 cursor-pointer hover:text-red-500" />
-            </div>
+            <CommentItem
+              key={comment.id}
+              comment={comment}
+              onReply={handleReplyClick} // 传递回调
+            />
           ))}
         </div>
 
@@ -308,9 +316,17 @@ export default function PostView({ post }: { post: PostDetail }) {
             </button>
           </div>
           <div className="font-bold text-sm mb-2">{likesCount} 次点赞</div>
-          <div className="text-[10px] text-muted-foreground uppercase mb-3">
-            {new Date(post.timestamp).toLocaleString()}
-          </div>
+          {replyingTo && (
+            <div className="flex items-center justify-between bg-muted/50 px-3 py-1.5 mb-2 rounded text-xs text-muted-foreground">
+              <span>
+                正在回复{" "}
+                <span className="font-bold">{replyingTo.username}</span>
+              </span>
+              <button onClick={handleCancelReply}>
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+          )}
 
           {/* Comment Input */}
           <form

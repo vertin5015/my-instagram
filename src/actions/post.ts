@@ -133,17 +133,30 @@ export async function getPostById(postId: string) {
   const user = await getCurrentUser();
   const userId = user?.id;
 
+  // 定义评论的查询结构 (避免深层嵌套代码重复)
+  const commentInclude = {
+    user: { select: { id: true, username: true, image: true } },
+    _count: { select: { likes: true } },
+    likes: userId ? { where: { userId }, select: { userId: true } } : false,
+  };
+
   const post = await prisma.post.findUnique({
     where: { id: postId },
     include: {
       user: {
         select: { id: true, username: true, image: true, name: true },
       },
+      // 这里的 comments 只查顶层评论 (parentId 为 null)
       comments: {
+        where: { parentId: null },
         orderBy: { createdAt: "desc" },
         include: {
-          user: {
-            select: { id: true, username: true, image: true },
+          ...commentInclude,
+          //以此类推，为了性能通常只取一层回复，点击“查看更多”再异步加载，
+          //但为了简单起见，这里直接取出一层回复
+          replies: {
+            include: commentInclude,
+            orderBy: { createdAt: "asc" }, // 回复通常按时间正序
           },
         },
       },
@@ -161,6 +174,7 @@ export async function getPostById(postId: string) {
 
   if (!post) return null;
 
+  // ... isFollowing 逻辑保持不变 ...
   let isFollowing = false;
   if (userId && post.userId !== userId) {
     const follow = await prisma.follows.findUnique({
@@ -173,6 +187,19 @@ export async function getPostById(postId: string) {
     });
     isFollowing = !!follow;
   }
+
+  // 格式化评论数据的辅助函数
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const formatComment = (c: any) => ({
+    id: c.id,
+    body: c.body,
+    createdAt: c.createdAt,
+    user: c.user,
+    parentId: c.parentId,
+    likesCount: c._count.likes,
+    isLiked: userId ? c.likes.length > 0 : false,
+    replies: c.replies?.map(formatComment) || [], // 递归格式化
+  });
 
   return {
     id: post.id,
@@ -187,16 +214,8 @@ export async function getPostById(postId: string) {
     isLiked: userId ? post.likes.length > 0 : false,
     isFollowing,
     isSaved: userId ? post.savedBy.length > 0 : false,
-    comments: post.comments.map((comment) => ({
-      id: comment.id,
-      body: comment.body,
-      createdAt: comment.createdAt,
-      user: {
-        id: comment.user.id,
-        username: comment.user.username ?? "Unknown",
-        image: comment.user.image ?? undefined,
-      },
-    })),
+    // 使用新的格式化逻辑
+    comments: post.comments.map(formatComment),
   };
 }
 
@@ -241,10 +260,13 @@ async function syncPostMentions(postId: string, caption: string | null) {
   });
 }
 
-export async function createComment(postId: string, body: string) {
+export async function createComment(
+  postId: string,
+  body: string,
+  parentId?: string // 新增参数
+) {
   const user = await getCurrentUser();
   if (!user) throw new Error("Unauthorized");
-
   if (!body.trim()) throw new Error("Comment cannot be empty");
 
   const comment = await prisma.comment.create({
@@ -252,11 +274,12 @@ export async function createComment(postId: string, body: string) {
       body,
       postId,
       userId: user.id,
+      parentId, // 存入数据库
     },
   });
 
   revalidatePath(`/post/${postId}`);
-  revalidatePath("/");
+  revalidatePath("/"); // 刷新 Feed 页的评论数
 
   return { success: true, comment };
 }
@@ -351,4 +374,37 @@ export async function getUserTaggedPosts(username: string) {
   });
 
   return posts;
+}
+
+export async function toggleCommentLike(commentId: string) {
+  const user = await getCurrentUser();
+  if (!user) return { success: false, error: "Unauthorized" };
+
+  try {
+    const existingLike = await prisma.commentLike.findUnique({
+      where: {
+        userId_commentId: {
+          userId: user.id,
+          commentId,
+        },
+      },
+    });
+
+    if (existingLike) {
+      await prisma.commentLike.delete({
+        where: { userId_commentId: { userId: user.id, commentId } },
+      });
+      revalidatePath("/");
+      return { success: true, isLiked: false };
+    } else {
+      await prisma.commentLike.create({
+        data: { userId: user.id, commentId },
+      });
+      revalidatePath("/");
+      return { success: true, isLiked: true };
+    }
+  } catch (error) {
+    console.error("Toggle comment like error:", error);
+    return { success: false, error: "Failed" };
+  }
 }

@@ -25,6 +25,7 @@ model User {
   posts         Post[]
   comments      Comment[]
   likes         Like[]
+  commentLikes  CommentLike[]
   saved         SavedPost[]
   
   followedBy    Follows[] @relation("following")
@@ -78,8 +79,31 @@ model Comment {
   postId    String
   post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
 
+  parentId  String?
+  parent    Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   Comment[] @relation("CommentReplies")
+
+  // --- 新增：评论点赞关联 ---
+  likes     CommentLike[]
+
   @@index([postId])
   @@index([userId])
+  @@index([parentId]) // 记得加索引
+}
+
+model CommentLike {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  commentId String
+  comment   Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, commentId]) // 一个用户对一条评论只能点赞一次
+  @@index([userId])
+  @@index([commentId])
 }
 
 model Like {
