@@ -147,6 +147,7 @@ export default function PostView({ post }: { post: PostDetail }) {
 
     startLikeTransition(async () => {
       const res = await toggleLike(post.id);
+      router.refresh();
       if (!res.success) {
         setIsLiked(prevIsLiked);
         setLikesCount(prevCount);

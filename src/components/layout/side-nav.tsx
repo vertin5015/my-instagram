@@ -31,7 +31,6 @@ export default function SideNav() {
     { icon: Home, label: "首页", href: "/" },
     { icon: Search, label: "搜索", href: "/search" },
     { icon: Compass, label: "发现", href: "/explore" },
-    { icon: MessageCircle, label: "消息", href: "/messages" },
     { icon: Heart, label: "通知", href: "/notification" },
     { icon: PlusSquare, label: "创建", href: "#", onClick: openCreatePost }, // 绑定点击事件
     {

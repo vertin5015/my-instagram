@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Grid3X3, Clapperboard, UserSquare2, Bookmark } from "lucide-react";
+import { Grid3X3, UserSquare2, Bookmark } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { notFound } from "next/navigation";
 import { getUserByUsername } from "@/actions/profile";
@@ -137,7 +137,7 @@ export default async function ProfileLayout({ children, params }: Props) {
                  - sm:pr-15: 只在桌面端保留右侧留白，移动端不需要
                  - whitespace-pre-wrap: 保留换行
               */}
-              <div className="whitespace-pre-wrap break-words sm:pr-15 leading-normal">
+              <div className="whitespace-pre-wrap wrap-break-word sm:pr-15 leading-normal">
                 {user.bio}
               </div>
             </div>
