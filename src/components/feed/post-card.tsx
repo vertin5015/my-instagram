@@ -6,22 +6,28 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import {
+  Dialog,
+  DialogContent,
+  DialogTrigger,
+  DialogClose,
+} from "@/components/ui/dialog";
+import {
   Heart,
   MessageCircle,
   Send,
   Bookmark,
   MoreHorizontal,
-  Smile,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "sonner"; // 确保你已经在 layout 中引入了 <Toaster />
 import Image from "next/image";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { toggleFollow, toggleLike } from "@/actions/user";
 import { useAuthStore } from "@/store/auth-store";
 import { toggleSave } from "@/actions/post";
+import { DialogTitle } from "@radix-ui/react-dialog";
 
 interface PostProps {
   id: string;
@@ -45,7 +51,6 @@ const formatNumber = (num: number) => {
   return num.toLocaleString();
 };
 
-// 子组件：解析简介中的 Tag 和 @用户
 const ParsedCaption = ({
   text,
   isExpanded,
@@ -57,8 +62,6 @@ const ParsedCaption = ({
 }) => {
   const regex = /((?:#|@)[^\s#@]+)/g;
   const parts = text.split(regex);
-
-  // 截断逻辑：如果不展开且文本过长(例如超过60字)，则截断
   const shouldTruncate = text.length > 60 && !isExpanded;
   const displayParts = shouldTruncate ? text.slice(0, 60).split(regex) : parts;
 
@@ -91,8 +94,6 @@ const ParsedCaption = ({
         }
         return <span key={index}>{part}</span>;
       })}
-
-      {/* 展开/收起 按钮 */}
       {text.length > 60 && (
         <button
           onClick={() => setIsExpanded(!isExpanded)}
@@ -110,33 +111,51 @@ export default function PostCard({ post }: { post: PostProps }) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isLiked, setIsLiked] = useState(post.isLiked || false);
   const [likesCount, setLikesCount] = useState(post.likes);
-
   const [isExpanded, setIsExpanded] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
   const [isSaved, setIsSaved] = useState(post.isSaved || false);
   const [isPending, startTransition] = useTransition();
   const [isFollowing, setIsFollowing] = useState(post.isFollowing || false);
 
+  // 控制 Modal 状态
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
   const handlePrevImage = (e: React.MouseEvent) => {
     e.preventDefault();
-    if (currentImageIndex > 0) {
-      setCurrentImageIndex((prev) => prev - 1);
-    }
+    if (currentImageIndex > 0) setCurrentImageIndex((prev) => prev - 1);
   };
 
   const handleNextImage = (e: React.MouseEvent) => {
     e.preventDefault();
-    if (currentImageIndex < post.images.length - 1) {
+    if (currentImageIndex < post.images.length - 1)
       setCurrentImageIndex((prev) => prev + 1);
+  };
+
+  // --- 修改核心：复制链接逻辑 ---
+  const handleCopyLink = async () => {
+    try {
+      const origin =
+        typeof window !== "undefined" ? window.location.origin : "";
+      const url = `${origin}/post/${post.id}`;
+
+      // 执行复制
+      await navigator.clipboard.writeText(url);
+
+      // 1. 先关闭弹窗 (如果在弹窗中点击)
+      setIsDialogOpen(false);
+
+      // 2. 弹出成功提示
+      toast.success("复制post链接成功");
+    } catch (err) {
+      console.error("Copy failed", err);
+      toast.error("复制失败，请重试");
     }
   };
 
   const handleFollow = async () => {
     if (!currentUser) return toast.error("请先登录");
-
     const prevStatus = isFollowing;
     setIsFollowing(!prevStatus);
-
     startTransition(() => {
       toggleFollow(post.userId).then((res) => {
         if (!res.success) {
@@ -148,47 +167,37 @@ export default function PostCard({ post }: { post: PostProps }) {
   };
 
   const handleLike = async () => {
-    if (!currentUser) {
-      return toast.error("请先登录");
-    }
-
+    if (!currentUser) return toast.error("请先登录");
     const prevIsLiked = isLiked;
     const prevLikesCount = likesCount;
-
     setIsLiked(!prevIsLiked);
     setLikesCount(prevIsLiked ? prevLikesCount - 1 : prevLikesCount + 1);
-
     if (!prevIsLiked) {
       setIsAnimating(true);
       setTimeout(() => setIsAnimating(false), 300);
     }
-
     startTransition(async () => {
       const res = await toggleLike(post.id);
       if (!res.success) {
         setIsLiked(prevIsLiked);
         setLikesCount(prevLikesCount);
-        toast.error("操作失败，请重试");
+        toast.error("操作失败");
       }
     });
   };
 
   const handleSave = async () => {
     if (!currentUser) return toast.error("请先登录");
-
     const prevSaved = isSaved;
-    // 乐观 UI 更新
     setIsSaved(!prevSaved);
-
     startTransition(async () => {
       try {
         const res = await toggleSave(post.id);
         if (res.success) {
           toast.success(res.isSaved ? "已收藏" : "已取消收藏");
         } else {
-          // 失败回滚
           setIsSaved(prevSaved);
-          toast.error("操作失败，请重试");
+          toast.error("操作失败");
         }
       } catch (error) {
         setIsSaved(prevSaved);
@@ -218,7 +227,6 @@ export default function PostCard({ post }: { post: PostProps }) {
               >
                 {post.username}
               </Link>
-
               {!isSelf && (
                 <>
                   <span className="text-muted-foreground text-[10px]">•</span>
@@ -239,15 +247,53 @@ export default function PostCard({ post }: { post: PostProps }) {
             </div>
           </div>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8 text-foreground/80"
-        >
-          <MoreHorizontal className="h-5 w-5" />
-        </Button>
+
+        {/* --- 更多选项 Modal --- */}
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTitle></DialogTitle>
+          <DialogTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-foreground/80 focus-visible:ring-0"
+            >
+              <MoreHorizontal className="h-5 w-5" />
+            </Button>
+          </DialogTrigger>
+          <DialogContent
+            showCloseButton={false}
+            className="p-0 gap-0 sm:max-w-[400px] border-none bg-background/95 backdrop-blur-sm overflow-hidden rounded-xl z-50"
+          >
+            {/* 选项 1: 打开帖子 */}
+            <Link
+              href={`/post/${post.id}`}
+              className="w-full outline-none"
+              onClick={() => setIsDialogOpen(false)}
+            >
+              <div className="flex items-center justify-center w-full h-12 text-sm font-semibold border-b cursor-pointer hover:bg-accent/50 transition-colors">
+                打开帖子
+              </div>
+            </Link>
+
+            {/* 选项 2: 复制链接 */}
+            <button
+              onClick={handleCopyLink}
+              className="flex items-center justify-center w-full h-12 text-sm font-semibold border-b hover:bg-accent/50 transition-colors outline-none active:bg-accent"
+            >
+              复制链接
+            </button>
+
+            {/* 选项 3: 取消 */}
+            <DialogClose asChild>
+              <button className="flex items-center justify-center w-full h-12 text-sm font-semibold hover:bg-accent/50 transition-colors outline-none">
+                取消
+              </button>
+            </DialogClose>
+          </DialogContent>
+        </Dialog>
       </div>
 
+      {/* Image Slider */}
       <div className="relative w-full aspect-4/5 bg-muted overflow-hidden group rounded-sm">
         <div
           className="flex w-full h-full transition-transform duration-300 ease-out"
@@ -262,15 +308,12 @@ export default function PostCard({ post }: { post: PostProps }) {
                 className="object-cover"
                 priority={index === 0}
                 sizes="(max-width: 768px) 100vw, 470px"
-                unoptimized={process.env.NODE_ENV === "development"}
               />
             </div>
           ))}
         </div>
-
         {post.images.length > 1 && (
           <>
-            {/* Left Arrow: 第一张时不显示 */}
             <button
               onClick={handlePrevImage}
               className={cn(
@@ -282,8 +325,6 @@ export default function PostCard({ post }: { post: PostProps }) {
             >
               <ChevronLeft className="h-5 w-5" />
             </button>
-
-            {/* Right Arrow: 最后一张时不显示 */}
             <button
               onClick={handleNextImage}
               className={cn(
@@ -295,30 +336,28 @@ export default function PostCard({ post }: { post: PostProps }) {
             >
               <ChevronRight className="h-5 w-5" />
             </button>
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
+              {post.images.map((_, idx) => (
+                <div
+                  key={idx}
+                  className={cn(
+                    "h-1.5 rounded-full transition-all shadow-sm",
+                    idx === currentImageIndex
+                      ? "bg-white w-1.5 scale-125"
+                      : "bg-white/50 w-1.5"
+                  )}
+                />
+              ))}
+            </div>
           </>
-        )}
-
-        {/* 指示器 Dots */}
-        {post.images.length > 1 && (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
-            {post.images.map((_, idx) => (
-              <div
-                key={idx}
-                className={cn(
-                  "h-1.5 rounded-full transition-all shadow-sm",
-                  idx === currentImageIndex
-                    ? "bg-white w-1.5 scale-125"
-                    : "bg-white/50 w-1.5"
-                )}
-              />
-            ))}
-          </div>
         )}
       </div>
 
+      {/* Actions */}
       <div className="p-3 pb-1">
         <div className="flex justify-between items-center mb-3">
           <div className="flex items-center gap-4">
+            {/* Like Button */}
             <div className="flex items-center gap-1.5">
               <button
                 onClick={handleLike}
@@ -340,6 +379,7 @@ export default function PostCard({ post }: { post: PostProps }) {
               </span>
             </div>
 
+            {/* Comment Button */}
             <div className="flex items-center gap-1.5">
               <Link href={`/post/${post.id}`} className="flex items-center">
                 <button className="flex items-center justify-center hover:text-muted-foreground transition-colors scale-x-[-1]">
@@ -351,7 +391,11 @@ export default function PostCard({ post }: { post: PostProps }) {
               </span>
             </div>
 
-            <button className="flex items-center justify-center hover:text-muted-foreground transition-colors -ml-1">
+            {/* --- 修改：Send 按钮调用 handleCopyLink --- */}
+            <button
+              onClick={handleCopyLink}
+              className="flex items-center justify-center hover:text-muted-foreground transition-colors -ml-1 active:scale-90 outline-none"
+            >
               <Send className="h-6 w-6" />
             </button>
           </div>
@@ -384,7 +428,6 @@ export default function PostCard({ post }: { post: PostProps }) {
             />
           </div>
         </div>
-
         <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-3">
           {post.timestamp}
         </p>

@@ -115,13 +115,13 @@ export function CreatePostUpload({ onImagesSelected }: CreatePostUploadProps) {
               className="h-24 w-24 text-foreground/80 dark:text-foreground mb-4"
               strokeWidth={1}
             />
-            <p className="text-xl font-light">将照片和视频拖到此处</p>
+            <p className="text-xl font-light">将照片拖到此处</p>
             <div className="mt-6">
               <Button
                 onClick={() => inputRef.current?.click()}
                 className="bg-[#0095f6] hover:bg-[#1877f2] text-white font-semibold h-8 text-sm px-4 rounded-md"
               >
-                从电脑选择
+                从电脑/手机选择
               </Button>
             </div>
           </>

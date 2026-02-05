@@ -19,7 +19,7 @@ export default async function PostModalPage({
   return (
     <ModalWrapper>
       {/* 修复关键：添加这个 div 来强制撑开高度和宽度，就像 PostPage 一样 */}
-      <div className="flex w-full h-[80vh] md:h-[600px] lg:h-[700px] overflow-hidden bg-background md:rounded-lg">
+      <div className="flex w-full h-[80vh] md:h-[600px] lg:h-[658px] overflow-hidden bg-background md:rounded-lg">
         <PostView post={post} />
       </div>
     </ModalWrapper>

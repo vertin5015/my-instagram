@@ -52,6 +52,26 @@ export function PostOptions({
     });
   };
 
+  const handleCopyLink = async () => {
+    try {
+      const origin =
+        typeof window !== "undefined" ? window.location.origin : "";
+      const url = `${origin}/post/${postId}`;
+
+      // 执行复制
+      await navigator.clipboard.writeText(url);
+
+      // 1. 先关闭弹窗
+      setIsOptionsOpen(false);
+
+      // 2. 弹出成功提示
+      toast.success("复制链接成功");
+    } catch (err) {
+      console.error("Copy failed", err);
+      toast.error("复制失败，请重试");
+    }
+  };
+
   return (
     <>
       {/* 触发按钮 */}
@@ -66,7 +86,10 @@ export function PostOptions({
 
       {/* 1. 主选项菜单 (Instagram 风格: 居中列表) */}
       <Dialog open={isOptionsOpen} onOpenChange={setIsOptionsOpen}>
-        <DialogContent className="max-w-xs sm:max-w-sm rounded-xl p-0 gap-0 overflow-hidden border-none bg-background/95 backdrop-blur-sm z-50">
+        <DialogContent
+          showCloseButton={false}
+          className="max-w-xs sm:max-w-sm rounded-xl p-0 gap-0 overflow-hidden border-none bg-background/95 backdrop-blur-sm z-50"
+        >
           <DialogTitle className="sr-only">帖子选项</DialogTitle>
           <div className="flex flex-col text-center">
             {isOwner && (
@@ -98,10 +121,10 @@ export function PostOptions({
             {!isOwner && (
               <Button
                 variant="ghost"
-                className="w-full h-12 rounded-none text-red-500 font-bold border-b border-border hover:bg-muted/50"
-                onClick={() => toast.info("举报功能开发中...")}
+                className="w-full h-12 rounded-none font-bold border-b border-border hover:bg-muted/50"
+                onClick={handleCopyLink}
               >
-                举报
+                复制链接
               </Button>
             )}
 

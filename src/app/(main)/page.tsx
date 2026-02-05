@@ -67,7 +67,7 @@ export default async function HomePage() {
 
       {/* ===== 右侧推荐栏 (大屏显示) ===== */}
       <div className="hidden xl:block w-[320px] pl-16">
-        <div className="w-[320px] pr-4">
+        <div className="fixed w-[320px] pr-4">
           {/* 当前用户信息卡片 */}
           <div className="flex items-center justify-between py-4 mb-2">
             <Link
