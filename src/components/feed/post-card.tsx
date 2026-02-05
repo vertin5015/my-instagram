@@ -308,6 +308,7 @@ export default function PostCard({ post }: { post: PostProps }) {
                 className="object-cover"
                 priority={index === 0}
                 sizes="(max-width: 768px) 100vw, 470px"
+                unoptimized={process.env.NODE_ENV === "development"}
               />
             </div>
           ))}

@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "prettier": "prettier --write .",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "shuffle": "tsx prisma/shuffle.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts",

@@ -169,6 +169,7 @@ export default function PostView({ post }: { post: PostDetail }) {
             fill
             className="object-contain" // 保持比例，不裁切
             priority
+            unoptimized={process.env.NODE_ENV === "development"}
           />
         </div>
 
