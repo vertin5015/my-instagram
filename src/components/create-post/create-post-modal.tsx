@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { createPost } from "@/actions/create-post";
+import getCroppedImg from "@/lib/canvas-utils";
 
 import { CreatePostUpload } from "./create-post-upload";
 import { ImageCarousel, CarouselRef, ImageCropData } from "./image-carousel";
@@ -39,10 +40,16 @@ export function CreatePostModal() {
   // 2. 新增：暂存从 ImageCarousel 获取的裁剪数据
   const [finalCropData, setFinalCropData] = useState<ImageCropData[]>([]);
 
+  // 3. 新增：存储裁剪后的预览图 URL
+  const [croppedImageUrls, setCroppedImageUrls] = useState<string[]>([]);
+
   // 清理内存
   useEffect(() => {
-    return () => imagePreviewUrls.forEach((url) => URL.revokeObjectURL(url));
-  }, [imagePreviewUrls]);
+    return () => {
+      imagePreviewUrls.forEach((url) => URL.revokeObjectURL(url));
+      croppedImageUrls.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [imagePreviewUrls, croppedImageUrls]);
 
   // 点击外部关闭 Emoji 选择器
   useEffect(() => {
@@ -67,6 +74,7 @@ export function CreatePostModal() {
         close();
         setImages([]);
         setFinalCropData([]); // 重置数据
+        setCroppedImageUrls([]);
       }
     } else {
       close();
@@ -82,6 +90,7 @@ export function CreatePostModal() {
         setImages([]);
         setStep("upload");
         setFinalCropData([]);
+        setCroppedImageUrls([]);
       }
     } else if (step === "caption") {
       setStep("crop");
@@ -100,14 +109,28 @@ export function CreatePostModal() {
   }, [isOpen, handleSafeClose]);
 
   // --- 处理“下一步”点击 ---
-  const handleNextStep = () => {
+  const handleNextStep = async () => {
     if (step === "crop" && carouselRef.current) {
       // 1. 从子组件获取当前的裁剪数据
       const crops = carouselRef.current.getCropData();
       // 2. 存入 State
       setFinalCropData(crops);
-      // 3. 进入下一步 (因为不需要前端处理图片，所以瞬间完成)
-      setStep("caption");
+
+      // 3. 生成裁剪后的图片预览 URL
+      try {
+        const newCroppedUrls = await Promise.all(
+          crops.map(async (item) => {
+            const croppedUrl = await getCroppedImg(item.url, item.crop);
+            return croppedUrl || item.url; // 如果裁剪失败则回退到原图
+          })
+        );
+        setCroppedImageUrls(newCroppedUrls);
+        setStep("caption");
+      } catch (error) {
+        console.error("Failed to crop images:", error);
+        // 即使生成预览失败，也继续进入下一步，显示原图
+        setStep("caption");
+      }
     } else {
       setStep("caption");
     }
@@ -137,6 +160,7 @@ export function CreatePostModal() {
       setImages([]);
       setCaption("");
       setFinalCropData([]);
+      setCroppedImageUrls([]);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "发布失败，请稍后重试";
       window.alert(msg);
@@ -267,7 +291,9 @@ export function CreatePostModal() {
                 ) : (
                   <ImageCarousel
                     ref={carouselRef} // 绑定 Ref
-                    urls={imagePreviewUrls}
+                    urls={
+                      step === "caption" ? croppedImageUrls : imagePreviewUrls
+                    }
                     step={step}
                   />
                 )}

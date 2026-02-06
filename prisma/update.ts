@@ -13,7 +13,7 @@ const getRandomId = () => Math.floor(Math.random() * 100000);
 
 // 1. 获取头像链接 (正方形, 400x400)
 const getAvatarUrl = () => {
-  return `https://picsum.photos/400/400?random=${getRandomId()}`;
+  return `https://picsum.photos/seed/${getRandomId()}/400/400`;
 };
 
 // 2. 获取帖子图片链接 (限制为 Instagram 常用比例)
@@ -26,7 +26,7 @@ const getPostImageUrl = () => {
   ];
 
   const size = types[Math.floor(Math.random() * types.length)];
-  return `https://picsum.photos/${size.w}/${size.h}?random=${getRandomId()}`;
+  return `https://picsum.photos/seed/${getRandomId()}/${size.w}/${size.h}`;
 };
 
 async function main() {
