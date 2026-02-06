@@ -1,6 +1,7 @@
 import SideNav from "@/components/layout/side-nav";
 import BottomNav from "@/components/layout/bottom-nav";
 import { CreatePostModal } from "@/components/create-post/create-post-modal";
+import { ScrollReset } from "@/components/layout/scroll-reset";
 
 export default function MainLayout({
   children,
@@ -9,11 +10,15 @@ export default function MainLayout({
 }) {
   return (
     <div className="flex h-full flex-col md:flex-row">
+      <ScrollReset />
       <aside className="hidden md:flex h-full w-16 flex-col border-r bg-background lg:w-60 fixed left-0 top-0 z-50">
         <SideNav />
       </aside>
 
-      <main className="flex-1 h-full overflow-y-auto md:ml-16 lg:ml-64 pb-16 md:pb-0 bg-background">
+      <main
+        id="main-scroll-container"
+        className="flex-1 h-full overflow-y-auto md:ml-16 lg:ml-64 pb-16 md:pb-0 bg-background"
+      >
         <div className="w-full mx-auto max-w-[935px] pt-8 ">{children}</div>
       </main>
 
