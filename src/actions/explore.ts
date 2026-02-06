@@ -39,3 +39,59 @@ export async function getExplorePosts(cursor?: string) {
     nextCursor,
   };
 }
+
+export async function getPostsByTag(tag: string, cursor?: string) {
+  // 解码 URL 参数 (防止中文乱码)
+  const decodedTag = decodeURIComponent(tag);
+
+  const posts = await prisma.post.findMany({
+    where: {
+      tags: {
+        some: {
+          name: decodedTag,
+        },
+      },
+    },
+    orderBy: {
+      createdAt: "desc", // 或者按点赞数 _count: { likes: 'desc' }
+    },
+    take: EXPLORE_PAGE_SIZE + 1,
+    cursor: cursor ? { id: cursor } : undefined,
+    skip: cursor ? 1 : 0,
+    select: {
+      id: true,
+      images: true,
+      caption: true,
+      _count: {
+        select: {
+          likes: true,
+          comments: true,
+        },
+      },
+    },
+  });
+
+  let nextCursor: string | undefined = undefined;
+  if (posts.length > EXPLORE_PAGE_SIZE) {
+    const nextItem = posts.pop();
+    nextCursor = nextItem?.id;
+  }
+
+  return {
+    items: posts,
+    nextCursor,
+  };
+}
+
+export async function getTagInfo(tag: string) {
+  const decodedTag = decodeURIComponent(tag);
+  const tagData = await prisma.tag.findUnique({
+    where: { name: decodedTag },
+    include: {
+      _count: {
+        select: { posts: true },
+      },
+    },
+  });
+  return tagData;
+}
