@@ -93,11 +93,11 @@ export default async function ProfileLayout({ children, params }: Props) {
                     />
                   )}
 
-                  {!isCurrentUser && (
+                  {/* {!isCurrentUser && (
                     <button className="h-8 px-4 text-sm font-semibold bg-neutral-200 dark:bg-neutral-800 rounded hover:bg-neutral-300 transition-colors">
                       发消息
                     </button>
-                  )}
+                  )} */}
                 </div>
               </div>
 

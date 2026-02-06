@@ -38,6 +38,7 @@ export function TagGrid({ tag, initialPosts, initialCursor }: Props) {
     if (inView && hasMore && !isLoading && cursor) {
       loadMore();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inView, hasMore, isLoading, cursor]);
 
   const loadMore = async () => {
@@ -45,7 +46,6 @@ export function TagGrid({ tag, initialPosts, initialCursor }: Props) {
     setIsLoading(true);
 
     try {
-      // 调用 getPostsByTag 而不是 getExplorePosts
       const res = await getPostsByTag(tag, cursor);
       setPosts((prev) => [...prev, ...res.items]);
       setCursor(res.nextCursor);

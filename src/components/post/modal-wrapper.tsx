@@ -1,6 +1,7 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -10,6 +11,12 @@ import {
 
 export function ModalWrapper({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const [open, setOpen] = useState(true);
+  const [mountedPath] = useState(pathname);
+
+  // Close modal if we navigate away from the path where it was opened
+  const showDialog = open && mountedPath === pathname;
 
   const onDismiss = () => {
     router.back();
@@ -18,8 +25,13 @@ export function ModalWrapper({ children }: { children: React.ReactNode }) {
   return (
     <Dialog
       defaultOpen={true}
-      open={true}
-      onOpenChange={(open) => !open && onDismiss()}
+      open={showDialog}
+      onOpenChange={(val) => {
+        if (!val) {
+          setOpen(false);
+          onDismiss();
+        }
+      }}
     >
       <DialogTitle>Post details</DialogTitle>
       <DialogContent
