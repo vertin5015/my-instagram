@@ -134,7 +134,7 @@ export default async function HomePage() {
               <span>隐私</span>
               <span>条款</span>
             </nav>
-            <div>© 2024 INSTAGRAM CLONE</div>
+            <div>© 2026 INSTAGRAM CLONE</div>
           </div>
         </div>
       </div>

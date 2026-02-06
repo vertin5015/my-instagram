@@ -74,7 +74,7 @@ export function TagGrid({ tag, initialPosts, initialCursor }: Props) {
                 alt={post.caption || "Post image"}
                 fill
                 sizes="(max-width: 768px) 33vw, 300px"
-                className="object-cover transition-transform duration-500 group-hover:scale-110"
+                className="object-cover "
               />
             ) : (
               <div className="flex items-center justify-center w-full h-full text-muted-foreground text-xs">

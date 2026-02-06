@@ -13,8 +13,8 @@ export default function LoginPage() {
   const [isLogin, setIsLogin] = useState(true);
 
   // 表单状态
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState("user1@test.com");
+  const [password, setPassword] = useState("123456");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
