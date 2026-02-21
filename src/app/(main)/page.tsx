@@ -54,8 +54,6 @@ export default async function HomePage() {
                 </span>
               </Link>
             ))}
-
-            {/* 占位符：如果不足3个，这里可以不显示，或者显示一些模拟数据 */}
           </div>
         )}
 
@@ -90,7 +88,7 @@ export default async function HomePage() {
               </div>
             </Link>
             <Link
-              href="/login" // 实际上这通常是 "Switch" 账号或退出
+              href="/login"
               className="text-blue-500 text-xs font-bold hover:text-blue-700 transition-colors ml-2"
             >
               切换

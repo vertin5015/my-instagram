@@ -3,7 +3,8 @@
 import { prisma } from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { createAuthSession, clearAuthCookie, getCurrentUser } from "@/lib/auth";
-import { User } from "@prisma/client";
+import type { AuthUser } from "@/types/auth";
+import type { User as PrismaUser } from "@prisma/client";
 
 // 定义通用的返回类型
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -22,7 +23,7 @@ export async function registerAction(
     username: string;
     name: string;
   }
-): Promise<ActionResponse<Omit<User, "hashedPassword">>> {
+): Promise<ActionResponse<AuthUser>> {
   try {
     const { email, password, username, name } = formData;
 
@@ -52,10 +53,19 @@ export async function registerAction(
     });
 
     if (user.email) {
-      await createAuthSession(user.id, user.email);
+      await createAuthSession(user.id);
     }
 
-    const { hashedPassword: _, ...safeUser } = user;
+    const { hashedPassword: _hashedPassword, ...rest } = user;
+    const safeUser: AuthUser = {
+      id: rest.id,
+      name: rest.name,
+      username: rest.username,
+      email: rest.email,
+      image: rest.image,
+      bio: rest.bio,
+    };
+
     return { success: true, data: safeUser };
   } catch (error) {
     console.error("[REGISTER_ACTION_ERROR]", error);
@@ -70,7 +80,7 @@ export async function loginAction(
     email: string;
     password: string;
   }
-): Promise<ActionResponse<Omit<User, "hashedPassword">>> {
+): Promise<ActionResponse<AuthUser>> {
   try {
     const { email, password } = formData;
 
@@ -92,10 +102,19 @@ export async function loginAction(
     }
 
     if (user.email) {
-      await createAuthSession(user.id, user.email);
+      await createAuthSession(user.id);
     }
 
-    const { hashedPassword: _, ...safeUser } = user;
+    const { hashedPassword: _hashedPassword, ...rest } = user;
+    const safeUser: AuthUser = {
+      id: rest.id,
+      name: rest.name,
+      username: rest.username,
+      email: rest.email,
+      image: rest.image,
+      bio: rest.bio,
+    };
+
     return { success: true, data: safeUser };
   } catch (error) {
     console.error("[LOGIN_ACTION_ERROR]", error);
@@ -116,7 +135,7 @@ export async function logoutAction(): Promise<ActionResponse> {
 
 // --- 4. 获取当前用户 Action ---
 export async function getSessionAction(): Promise<
-  ActionResponse<Partial<User> | null>
+  ActionResponse<AuthUser | null>
 > {
   try {
     const user = await getCurrentUser();

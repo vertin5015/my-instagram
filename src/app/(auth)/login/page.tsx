@@ -2,17 +2,16 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuthStore, User } from "@/store/auth-store";
+import { useAuthStore } from "@/store/auth-store";
+import type { AuthUser } from "@/types/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-// ✅ 引入 Server Actions
 import { loginAction, registerAction } from "@/actions/auth";
 
 export default function LoginPage() {
   const [isLogin, setIsLogin] = useState(true);
 
-  // 表单状态
   const [email, setEmail] = useState("user1@test.com");
   const [password, setPassword] = useState("123456");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -43,11 +42,8 @@ export default function LoginPage() {
       let response;
 
       if (isLogin) {
-        // ✅ 调用登录 Action
-        // 第一个参数 prevState 我们可以传 null，因为我们没用 useFormState
         response = await loginAction(null, { email, password });
       } else {
-        // ✅ 调用注册 Action
         response = await registerAction(null, {
           email,
           password,
@@ -59,13 +55,9 @@ export default function LoginPage() {
       if (!response.success) {
         setError(response.error || "操作失败");
       } else {
-        // 成功逻辑
-        // 优化：Action 已经返回了最新的 User 数据，我们可以直接更新 Store，
-        // 而不需要再次调用 fetchUser() 发起一次网络请求。
         if (response.data) {
-          setUser(response.data as User);
+          setUser(response.data as AuthUser);
         } else {
-          // 如果没返回数据，作为兜底再拉取一次
           await fetchUser();
         }
 

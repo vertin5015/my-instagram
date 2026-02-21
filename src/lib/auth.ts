@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
-import { verifyToken, generateToken, TokenPayload } from "./jwt";
+import { verifyToken, generateToken } from "./jwt";
 import { prisma } from "./db";
+import type { AuthUser } from "@/types/auth";
 
 export async function setAuthCookie(token: string) {
   const cookieStore = await cookies();
@@ -18,7 +19,7 @@ export async function clearAuthCookie() {
   cookieStore.delete("auth-token");
 }
 
-export async function getCurrentUser() {
+export async function getCurrentUser(): Promise<AuthUser | null> {
   try {
     const cookieStore = await cookies();
     const token = cookieStore.get("auth-token")?.value;
@@ -46,8 +47,8 @@ export async function getCurrentUser() {
   }
 }
 
-export async function createAuthSession(userId: string, email: string) {
-  const token = generateToken({ userId, email });
+export async function createAuthSession(userId: string) {
+  const token = generateToken({ userId });
   await setAuthCookie(token);
   return token;
 }
