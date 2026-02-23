@@ -19,54 +19,65 @@ import {
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 
-// 定义传输给后端的数据结构
+// 这个组件负责在“创建帖子”流程中展示图片轮播 & 裁剪功能
+// - step === "crop" 时：使用 react-easy-crop 提供裁剪交互，记录每张图片的裁剪像素区域
+// - 其他 step：只展示图片预览（左右切换、多图指示器）
+// - 通过 forwardRef 暴露 getCropData 给父组件，用于在提交时拿到所有图片的裁剪数据
+
+// 定义传输给父组件 / 后端的数据结构
 export type ImageCropData = {
-  url: string; // 标识是哪张图
-  crop: Area; // 像素裁剪区域 { x, y, width, height }
+  url: string; // 标识是哪张图（对应的预览 URL）
+  crop: Area; // 像素裁剪区域 { x, y, width, height }，通常来自 react-easy-crop 的 croppedAreaPixels
 };
 
 interface ImageCarouselProps {
-  urls: string[];
-  step: string;
+  urls: string[]; // 当前要展示 / 裁剪的所有图片 URL
+  step: string; // 当前处于创建流程的哪个 step（决定是否显示裁剪 UI）
   className?: string;
 }
 
-// 暴露给父组件的方法接口
+// 暴露给父组件的 ref 接口：父组件可以调用 ref.current.getCropData() 获取全部图片的裁剪数据
 export interface CarouselRef {
   getCropData: () => ImageCropData[];
 }
 
 export const ImageCarousel = forwardRef<CarouselRef, ImageCarouselProps>(
   ({ urls, step, className }, ref) => {
+    // 当前正在查看 / 操作的是第几张图片
     const [index, setIndex] = useState(0);
 
-    // Cropper 的 UI 状态
+    // Cropper 的交互状态：平移 (crop) + 缩放 (zoom)
     const [crop, setCrop] = useState({ x: 0, y: 0 });
     const [zoom, setZoom] = useState(1);
 
-    // --- 修改点 1: 这里直接使用 number 类型，不要用 Union 类型 ---
-    // react-easy-crop 接受任意数字作为比例 (例如 4/5 即 0.8)
+    // 裁剪比例，react-easy-crop 接受 number 类型（例如 4/5 即 0.8）
     const [aspect, setAspect] = useState<number>(1);
 
-    // 存储每张图片的“最终像素裁剪区域”
+    // 存储每张图片的“最终像素裁剪区域”：key 为图片索引，值为 Area
     const [cropMap, setCropMap] = useState<Record<number, Area>>({});
 
+    // 当切换图片时，重置当前 Cropper 的平移 / 缩放，保持比例不变
     useEffect(() => {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setCrop({ x: 0, y: 0 });
       setZoom(1);
-      // 切换图片时，通常保持用户选择的裁剪比例 (aspect)，不需要重置
+      // 用户选择的 aspect 比例通常需要跨图片复用，因此这里不重置 aspect
     }, [index]);
 
+    // 每次拖动 / 缩放结束后，react-easy-crop 会回调 onCropComplete，给出像素级裁剪结果
     const onCropComplete = useCallback(
       (_: Area, croppedAreaPixels: Area) => {
+        // 将当前图片 index 对应的像素区域记录下来，后续提交时统一取 cropMap
         setCropMap((prev) => ({ ...prev, [index]: croppedAreaPixels }));
       },
       [index]
     );
 
+    // 通过 ref 暴露 getCropData 方法给父组件
     useImperativeHandle(ref, () => ({
       getCropData: () => {
+        // 保证返回的数组顺序与 urls 一致
+        // 如果某张图片还没有裁剪记录，则返回一个 width/height 为 0 的默认值，表示“未裁剪”
         return urls.map((url, i) => ({
           url: url,
           crop: cropMap[i] || { x: 0, y: 0, width: 0, height: 0 },
@@ -74,11 +85,13 @@ export const ImageCarousel = forwardRef<CarouselRef, ImageCarouselProps>(
       },
     }));
 
+    // 切换到上一张图片（循环切换）
     const prev = (e: React.MouseEvent) => {
       e.stopPropagation();
       setIndex((i) => (i <= 0 ? urls.length - 1 : i - 1));
     };
 
+    // 切换到下一张图片（循环切换）
     const next = (e: React.MouseEvent) => {
       e.stopPropagation();
       setIndex((i) => (i >= urls.length - 1 ? 0 : i + 1));
@@ -93,6 +106,7 @@ export const ImageCarousel = forwardRef<CarouselRef, ImageCarouselProps>(
           className
         )}
       >
+        {/* 主画布区域：根据 step 决定展示 Cropper 还是静态 Image */}
         <div className={cn("relative w-full h-full bg-black overflow-hidden")}>
           {step === "crop" ? (
             <Cropper
@@ -117,6 +131,7 @@ export const ImageCarousel = forwardRef<CarouselRef, ImageCarouselProps>(
           )}
         </div>
 
+        {/* 底部圆点 + 左右切换按钮：多图时才展示 */}
         {urls.length > 1 && (
           <>
             <button
@@ -146,8 +161,10 @@ export const ImageCarousel = forwardRef<CarouselRef, ImageCarouselProps>(
           </>
         )}
 
+        {/* 仅在裁剪步骤显示：裁剪比例选择 + 缩放控制 */}
         {step === "crop" && (
           <div className="absolute bottom-4 left-4 z-30 flex gap-2">
+            {/* 裁剪比例选择 Popover */}
             <Popover>
               <PopoverTrigger asChild>
                 <Button
@@ -164,7 +181,7 @@ export const ImageCarousel = forwardRef<CarouselRef, ImageCarouselProps>(
                 align="start"
               >
                 <div className="flex flex-col text-sm font-medium">
-                  {/* --- 修改点 2: 在点击时直接传入计算后的数字 --- */}
+                  {/* 1:1 正方形 */}
                   <button
                     onClick={() => setAspect(1)}
                     className={cn(
@@ -177,12 +194,11 @@ export const ImageCarousel = forwardRef<CarouselRef, ImageCarouselProps>(
                       Square
                     </span>
                   </button>
+                  {/* 4:5 纵向（常见于 Instagram） */}
                   <button
                     onClick={() => setAspect(4 / 5)}
                     className={cn(
                       "px-3 py-2 text-left hover:bg-white/20 rounded-sm border-t border-white/10 flex justify-between",
-                      // 这里比较时，由于浮点数精度问题，建议用近似比较，或者直接保存一个 activeAspectKey 状态来控制高亮
-                      // 这里简单处理：0.8 === 4/5
                       aspect === 4 / 5 && "text-blue-400"
                     )}
                   >
@@ -191,6 +207,7 @@ export const ImageCarousel = forwardRef<CarouselRef, ImageCarouselProps>(
                       Portrait
                     </span>
                   </button>
+                  {/* 16:9 横向 */}
                   <button
                     onClick={() => setAspect(16 / 9)}
                     className={cn(
@@ -207,6 +224,7 @@ export const ImageCarousel = forwardRef<CarouselRef, ImageCarouselProps>(
               </PopoverContent>
             </Popover>
 
+            {/* 缩放控制 Popover */}
             <Popover>
               <PopoverTrigger asChild>
                 <Button

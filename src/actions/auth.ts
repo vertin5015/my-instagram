@@ -56,6 +56,7 @@ export async function registerAction(
       await createAuthSession(user.id);
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { hashedPassword: _hashedPassword, ...rest } = user;
     const safeUser: AuthUser = {
       id: rest.id,

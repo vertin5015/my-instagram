@@ -1,13 +1,22 @@
+import type { ReactNode } from "react";
+import { redirect } from "next/navigation";
+import { getCurrentUser } from "@/lib/auth";
 import SideNav from "@/components/layout/side-nav";
 import BottomNav from "@/components/layout/bottom-nav";
 import { CreatePostModal } from "@/components/create-post/create-post-modal";
 import { ScrollReset } from "@/components/layout/scroll-reset";
 
-export default function MainLayout({
+export default async function MainLayout({
   children,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
+  const user = await getCurrentUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
   return (
     <div className="flex h-full flex-col md:flex-row">
       <ScrollReset />
