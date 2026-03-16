@@ -350,7 +350,7 @@ export function CreatePostModal() {
                     </span>
                   </div>
                   <div className="border-t border-border p-4 text-sm text-muted-foreground">
-                    高级设置 (演示)
+                    高级设置
                   </div>
                 </div>
               )}
