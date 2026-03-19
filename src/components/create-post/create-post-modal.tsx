@@ -43,13 +43,40 @@ export function CreatePostModal() {
   // 3. 新增：存储裁剪后的预览图 URL
   const [croppedImageUrls, setCroppedImageUrls] = useState<string[]>([]);
 
-  // 清理内存
+  const imagePreviewUrlsRef = useRef<string[]>([]);
+  const croppedImageUrlsRef = useRef<string[]>([]);
+
+  const revokeUrls = useCallback((urls: string[]) => {
+    urls.forEach((url) => URL.revokeObjectURL(url));
+  }, []);
+
+  const clearAllObjectUrls = useCallback(() => {
+    revokeUrls(imagePreviewUrlsRef.current);
+    revokeUrls(croppedImageUrlsRef.current);
+    imagePreviewUrlsRef.current = [];
+    croppedImageUrlsRef.current = [];
+    setCroppedImageUrls([]);
+  }, [revokeUrls]);
+
+  useEffect(() => {
+    imagePreviewUrlsRef.current = imagePreviewUrls;
+  }, [imagePreviewUrls]);
+
+  useEffect(() => {
+    const previousUrls = croppedImageUrlsRef.current;
+    croppedImageUrlsRef.current = croppedImageUrls;
+
+    if (previousUrls.length > 0) {
+      revokeUrls(previousUrls);
+    }
+  }, [croppedImageUrls, revokeUrls]);
+
   useEffect(() => {
     return () => {
-      imagePreviewUrls.forEach((url) => URL.revokeObjectURL(url));
-      croppedImageUrls.forEach((url) => URL.revokeObjectURL(url));
+      revokeUrls(imagePreviewUrlsRef.current);
+      revokeUrls(croppedImageUrlsRef.current);
     };
-  }, [imagePreviewUrls, croppedImageUrls]);
+  }, [revokeUrls]);
 
   // 点击外部关闭 Emoji 选择器
   useEffect(() => {
@@ -71,15 +98,14 @@ export function CreatePostModal() {
         "要放弃帖子吗？如果离开，所做的修改将会丢失。"
       );
       if (confirm) {
+        clearAllObjectUrls();
         close();
-        setImages([]);
         setFinalCropData([]); // 重置数据
-        setCroppedImageUrls([]);
       }
     } else {
       close();
     }
-  }, [step, close, setImages]);
+  }, [step, close, clearAllObjectUrls]);
 
   const handleBack = () => {
     if (step === "crop") {
@@ -87,10 +113,10 @@ export function CreatePostModal() {
         "要放弃帖子吗？如果离开，所做的修改将会丢失。"
       );
       if (confirm) {
+        clearAllObjectUrls();
         setImages([]);
         setStep("upload");
         setFinalCropData([]);
-        setCroppedImageUrls([]);
       }
     } else if (step === "caption") {
       setStep("crop");
@@ -124,6 +150,7 @@ export function CreatePostModal() {
             return croppedUrl || item.url; // 如果裁剪失败则回退到原图
           })
         );
+
         setCroppedImageUrls(newCroppedUrls);
         setStep("caption");
       } catch (error) {
@@ -156,11 +183,10 @@ export function CreatePostModal() {
 
       await createPost(formData);
 
+      clearAllObjectUrls();
       setStep("success");
-      setImages([]);
       setCaption("");
       setFinalCropData([]);
-      setCroppedImageUrls([]);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "发布失败，请稍后重试";
       window.alert(msg);
