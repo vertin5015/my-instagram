@@ -4,7 +4,7 @@ import { getCurrentUser } from "@/lib/auth";
 import SideNav from "@/components/layout/side-nav";
 import BottomNav from "@/components/layout/bottom-nav";
 import { CreatePostModal } from "@/components/create-post/create-post-modal";
-import { ScrollReset } from "@/components/layout/scroll-reset";
+// import { ScrollReset } from "@/components/layout/scroll-reset";
 
 export default async function MainLayout({
   children,
@@ -19,7 +19,7 @@ export default async function MainLayout({
 
   return (
     <div className="flex h-full flex-col md:flex-row">
-      <ScrollReset />
+      {/* <ScrollReset /> */}
       <aside className="hidden md:flex h-full w-16 flex-col border-r bg-background lg:w-60 fixed left-0 top-0 z-50">
         <SideNav />
       </aside>
